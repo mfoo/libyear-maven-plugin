@@ -1,0 +1,22 @@
+name: Java Tests
+on: [push]
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        java: [11, 17, 18]
+      fail-fast: false
+    name: Test on JDK ${{ matrix.java }}, ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up JDK
+      uses: actions/setup-java@v1
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Test with Maven
+      run: mvn -B --file pom.xml test
+    - name: Verify with Maven
+      run: mvn -B -f pom.xml verify
