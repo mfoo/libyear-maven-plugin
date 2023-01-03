@@ -67,14 +67,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @MockitoSettings(strictness = Strictness.LENIENT)
 @WireMockTest(httpPort = 8080)
 public class LibYearMojoTest {
-    // ext AbstractMojoTestCase
 
-    // TODO: Tests with includes and excludes
     // TODO: Wildcard exclude, e.g. com.mfoot.*
-    // TODO: Tests with versions being referenced by variables and needing to be resolved
-    // TODO: Licensing
+    // TODO: Tests with version numbers being referenced by variables
+    // TODO: Test with version ranges
     // TODO: Cleanup
-    // TODO: Test with version ranges for current version
     // TODO: Run code formatter via plugin and enforce format
 
     private static Plugin pluginOf(String artifactId, String groupId, String version) {
@@ -109,7 +106,7 @@ public class LibYearMojoTest {
             session = mockMavenSession();
             SEARCH_URI = "http://localhost:8080";
 
-            setLog(new LogWrapper(super.getLog()));
+            setLog(new InMemoryTestLogger());
         }};
 
         LocalDateTime now = LocalDateTime.now();
@@ -121,8 +118,9 @@ public class LibYearMojoTest {
 
         mojo.execute();
 
-        assertTrue(((LogWrapper) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.isEmpty());
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) ->
+                l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
     }
 
     @Test
@@ -132,7 +130,9 @@ public class LibYearMojoTest {
         }})
 
         ) {{
-            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency-with-very-very-long-name").withVersion("1.0.0").build())).build());
+            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder
+                    .newBuilder().withGroupId("default-group")
+                    .withArtifactId("default-dependency-with-very-very-long-name").withVersion("1.0.0").build())).build());
             setVariableValueToObject(this, "processDependencies", true);
             setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
             setVariableValueToObject(this, "dependencyExcludes", emptyList());
@@ -141,7 +141,7 @@ public class LibYearMojoTest {
             session = mockMavenSession();
             SEARCH_URI = "http://localhost:8080";
 
-            setLog(new LogWrapper(super.getLog()));
+            setLog(new InMemoryTestLogger());
         }};
 
         LocalDateTime now = LocalDateTime.now();
@@ -153,8 +153,9 @@ public class LibYearMojoTest {
         mojo.execute();
 
         // TODO: Implement wrapping for libyear output for dependencies with long names then update this test
-        assertTrue(((LogWrapper) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency-with-very-very-long-name") && l.contains("1.00 libyears")));
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.isEmpty());
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) ->
+                l.contains("default-group:default-dependency-with-very-very-long-name") && l.contains("1.00 libyears")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
     }
 
     @Test
@@ -164,10 +165,13 @@ public class LibYearMojoTest {
         dependencyUpdateAvailable();
 
         // One call for v1.0.0
-        verify(1, getRequestedFor(urlPathEqualTo("/solrsearch/select")).withQueryParam("q", equalTo("g:default-group AND a:default-dependency AND v:1.0.0")));
+        verify(1,
+                getRequestedFor(urlPathEqualTo("/solrsearch/select"))
+                        .withQueryParam("q", equalTo("g:default-group AND a:default-dependency AND v:1.0.0")));
 
         // One call for v2.0.0
-        verify(1, getRequestedFor(urlPathEqualTo("/solrsearch/select")).withQueryParam("q", equalTo("g:default-group AND a:default-dependency AND v:2.0.0")));
+        verify(1, getRequestedFor(urlPathEqualTo("/solrsearch/select"))
+                .withQueryParam("q", equalTo("g:default-group AND a:default-dependency AND v:2.0.0")));
     }
 
     @Test
@@ -177,8 +181,18 @@ public class LibYearMojoTest {
         }})
 
         ) {{
-            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.0.0") // This is overridden by dependencyManagement
-                    .build())).withDependencyManagementDependencyList(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.1.0").build())).build());
+            setProject(new MavenProjectBuilder()
+                    .withDependencies(singletonList(DependencyBuilder.newBuilder()
+                            .withGroupId("default-group")
+                            .withArtifactId("default-dependency")
+                            .withVersion("1.0.0") // This is overridden by dependencyManagement
+                    .build()))
+                    .withDependencyManagementDependencyList(
+                            singletonList(DependencyBuilder.newBuilder()
+                                    .withGroupId("default-group")
+                                    .withArtifactId("default-dependency")
+                                    .withVersion("1.1.0").build()))
+                    .build());
             setVariableValueToObject(this, "processDependencies", true);
             setVariableValueToObject(this, "processDependencyManagement", true);
             setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
@@ -190,7 +204,7 @@ public class LibYearMojoTest {
             session = mockMavenSession();
             SEARCH_URI = "http://localhost:8080";
 
-            setLog(new LogWrapper(super.getLog()));
+            setLog(new InMemoryTestLogger());
         }};
 
         LocalDateTime now = LocalDateTime.now();
@@ -202,9 +216,9 @@ public class LibYearMojoTest {
 
         mojo.execute();
 
-        assertTrue(((LogWrapper) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
 
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.isEmpty());
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
     }
 
     /**
@@ -230,7 +244,7 @@ public class LibYearMojoTest {
             session = mockMavenSession();
             SEARCH_URI = "http://localhost:8080";
 
-            setLog(new LogWrapper(super.getLog()));
+            setLog(new InMemoryTestLogger());
         }};
 
         LocalDateTime now = LocalDateTime.now();
@@ -241,8 +255,9 @@ public class LibYearMojoTest {
 
         mojo.execute();
 
-        assertTrue(((LogWrapper) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.isEmpty());
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch(
+                (l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
     }
 
     @Test
@@ -267,7 +282,7 @@ public class LibYearMojoTest {
             session = mockMavenSession();
             SEARCH_URI = "http://localhost:8080";
 
-            setLog(new LogWrapper(super.getLog()));
+            setLog(new InMemoryTestLogger());
         }};
 
         LocalDateTime now = LocalDateTime.now();
@@ -278,8 +293,9 @@ public class LibYearMojoTest {
 
         mojo.execute();
 
-        assertTrue(((LogWrapper) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.isEmpty());
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) ->
+                l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
     }
 
     /**
@@ -312,7 +328,7 @@ public class LibYearMojoTest {
             session = mockMavenSession();
             SEARCH_URI = "http://localhost:8080";
 
-            setLog(new LogWrapper(super.getLog()));
+            setLog(new InMemoryTestLogger());
         }};
 
         LocalDateTime now = LocalDateTime.now();
@@ -324,8 +340,9 @@ public class LibYearMojoTest {
 
         mojo.execute();
 
-        assertTrue(((LogWrapper) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.isEmpty());
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) ->
+                l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
     }
 
     /**
@@ -347,10 +364,10 @@ public class LibYearMojoTest {
         }})
 
         ) {{
-            setProject(new MavenProjectBuilder().withPlugins(singletonList(plugin)).withPluginManagementPluginList(singletonList(managedPlugin)).build());
+            setProject(new MavenProjectBuilder()
+                    .withPlugins(singletonList(plugin))
+                    .withPluginManagementPluginList(singletonList(managedPlugin)).build());
 
-            //			setVariableValueToObject(this, "allowAnyUpdates", false);
-            //			setVariableValueToObject(this, "allowMajorUpdates", false);
             setVariableValueToObject(this, "processPluginDependencies", true);
             setVariableValueToObject(this, "pluginDependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
             setVariableValueToObject(this, "pluginDependencyExcludes", emptyList());
@@ -362,7 +379,7 @@ public class LibYearMojoTest {
             session = mockMavenSession();
             SEARCH_URI = "http://localhost:8080";
 
-            setLog(new LogWrapper(super.getLog()));
+            setLog(new InMemoryTestLogger());
         }};
 
         LocalDateTime now = LocalDateTime.now();
@@ -373,8 +390,8 @@ public class LibYearMojoTest {
 
         mojo.execute();
 
-        assertTrue(((LogWrapper) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.isEmpty());
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
     }
 
     private Dependency dependencyFor(String groupID, String artifactId, String version) {
@@ -423,7 +440,11 @@ public class LibYearMojoTest {
         LibYearMojo mojo = new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {{
             put("default-dependency", new String[]{"1.0.0", "2.0.0"});
         }})) {{
-            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.0.0").build())).build());
+            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder()
+                    .withGroupId("default-group")
+                    .withArtifactId("default-dependency")
+                    .withVersion("1.0.0").build()))
+                .build());
             setVariableValueToObject(this, "processDependencies", true);
             setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
             setVariableValueToObject(this, "dependencyExcludes", emptyList());
@@ -432,16 +453,18 @@ public class LibYearMojoTest {
             session = mockMavenSession();
             SEARCH_URI = "http://localhost:8080";
 
-            setLog(new LogWrapper(super.getLog()));
+            setLog(new InMemoryTestLogger());
         }};
 
         stubFor(get(urlPathEqualTo("/solrsearch/select")).willReturn(serverError()));
 
         mojo.execute();
 
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.stream().anyMatch((l) -> l.contains("Failed to fetch release date for default-group:default-dependency 1.0.0")));
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.stream().anyMatch((l) -> l.contains("Failed to fetch release date for default-group:default-dependency 2.0.0")));
-        assertEquals(4, ((LogWrapper) mojo.getLog()).errorLogs.size());
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.stream().anyMatch((l) ->
+                l.contains("Failed to fetch release date for default-group:default-dependency 1.0.0")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.stream().anyMatch((l) ->
+                l.contains("Failed to fetch release date for default-group:default-dependency 2.0.0")));
+        assertEquals(4, ((InMemoryTestLogger) mojo.getLog()).errorLogs.size());
     }
 
     @Test
@@ -449,7 +472,10 @@ public class LibYearMojoTest {
         LibYearMojo mojo = new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {{
             put("default-dependency", new String[]{"1.0.0", "2.0.0"});
         }})) {{
-            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.0.0").build())).build());
+            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder()
+                    .withGroupId("default-group")
+                    .withArtifactId("default-dependency")
+                    .withVersion("1.0.0").build())).build());
             setVariableValueToObject(this, "processDependencies", true);
             setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
             setVariableValueToObject(this, "dependencyExcludes", emptyList());
@@ -459,16 +485,18 @@ public class LibYearMojoTest {
             SEARCH_URI = "http://localhost:8080";
             TIMEOUT_SECONDS = 1;
 
-            setLog(new LogWrapper(super.getLog()));
+            setLog(new InMemoryTestLogger());
         }};
 
         stubFor(get(urlPathEqualTo("/solrsearch/select")).willReturn(ok().withFixedDelay(10_000 /* ms */)));
 
         mojo.execute();
 
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.stream().anyMatch((l) -> l.contains("Failed to get release date for default-group:default-dependency 1.0.0: request timed out")));
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.stream().anyMatch((l) -> l.contains("Failed to get release date for default-group:default-dependency 2.0.0: request timed out")));
-        assertEquals(2, ((LogWrapper) mojo.getLog()).errorLogs.size());
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.stream().anyMatch((l) ->
+                l.contains("Failed to get release date for default-group:default-dependency 1.0.0: request timed out")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.stream().anyMatch((l) ->
+                l.contains("Failed to get release date for default-group:default-dependency 2.0.0: request timed out")));
+        assertEquals(2, ((InMemoryTestLogger) mojo.getLog()).errorLogs.size());
     }
 
     @Test
@@ -478,7 +506,10 @@ public class LibYearMojoTest {
         }})
 
         ) {{
-            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.0.0").build())).build());
+            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder()
+                    .withGroupId("default-group")
+                    .withArtifactId("default-dependency")
+                    .withVersion("1.0.0").build())).build());
             setVariableValueToObject(this, "processDependencies", true);
             setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
             setVariableValueToObject(this, "dependencyExcludes", emptyList());
@@ -487,18 +518,20 @@ public class LibYearMojoTest {
             session = mockMavenSession();
             SEARCH_URI = "http://localhost:8080";
 
-            setLog(new LogWrapper(super.getLog()));
+            setLog(new InMemoryTestLogger());
         }};
 
         LocalDateTime now = LocalDateTime.now();
 
         stubResponseFor("default-group", "default-dependency", "1.0.0", now.minusYears(1));
-        stubFor(get(urlPathEqualTo("/solrsearch/select")).withQueryParam("q", equalTo(String.format("g:%s AND a:%s AND v:%s", "default-group", "default-dependency", "2.0.0"))).withQueryParam("wt", equalTo("json")).willReturn(serverError()));
+        stubFor(get(urlPathEqualTo("/solrsearch/select"))
+                .withQueryParam("q", equalTo(String.format("g:%s AND a:%s AND v:%s", "default-group", "default-dependency", "2.0.0"))
+                ).withQueryParam("wt", equalTo("json")).willReturn(serverError()));
 
         mojo.execute();
 
-        assertFalse(((LogWrapper) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency")));
-        assertTrue(((LogWrapper) mojo.getLog()).errorLogs.contains("Failed to fetch release date for default-group:default-dependency 2.0.0"));
+        assertFalse(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.contains("Failed to fetch release date for default-group:default-dependency 2.0.0"));
     }
 
     @Test
@@ -508,7 +541,10 @@ public class LibYearMojoTest {
         }})
 
         ) {{
-            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.0.0").build())).build());
+            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder()
+                    .withGroupId("default-group")
+                    .withArtifactId("default-dependency")
+                    .withVersion("1.0.0").build())).build());
             setVariableValueToObject(this, "processDependencies", true);
             setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
             setVariableValueToObject(this, "dependencyExcludes", emptyList());
@@ -517,7 +553,7 @@ public class LibYearMojoTest {
             session = mockMavenSession();
             SEARCH_URI = "http://localhost:8080";
 
-            setLog(new LogWrapper(super.getLog()));
+            setLog(new InMemoryTestLogger());
         }};
 
         LocalDateTime now = LocalDateTime.now();
@@ -527,9 +563,9 @@ public class LibYearMojoTest {
 
         mojo.execute();
 
-        assertFalse(((LogWrapper) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency")));
-        assertEquals(6, ((LogWrapper) mojo.getLog()).debugLogs.size());
-        assertTrue(((LogWrapper) mojo.getLog()).debugLogs.contains("Could not find artifact for default-group:default-dependency 2.0.0"));
+        assertFalse(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency")));
+        assertEquals(6, ((InMemoryTestLogger) mojo.getLog()).debugLogs.size());
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).debugLogs.contains("Could not find artifact for default-group:default-dependency 2.0.0"));
     }
 
     private static class MavenProjectBuilder {
