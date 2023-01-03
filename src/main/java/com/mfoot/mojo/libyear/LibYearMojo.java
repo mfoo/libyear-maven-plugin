@@ -14,12 +14,10 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.repository.RepositorySystem;
 import org.apache.maven.settings.Settings;
-import org.apache.maven.wagon.Wagon;
 import org.codehaus.mojo.versions.api.ArtifactVersions;
 import org.codehaus.mojo.versions.api.DefaultVersionsHelper;
 import org.codehaus.mojo.versions.api.VersionsHelper;
 import org.codehaus.mojo.versions.filtering.WildcardMatcher;
-import org.codehaus.mojo.versions.model.RuleSet;
 import org.codehaus.mojo.versions.utils.DependencyComparator;
 import org.codehaus.mojo.versions.utils.MavenProjectUtils;
 import org.codehaus.plexus.util.StringUtils;
@@ -54,7 +52,7 @@ import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractDependen
 @Mojo(name = "libyear-report", threadSafe = true, defaultPhase = LifecyclePhase.VERIFY)
 public class LibYearMojo extends AbstractMojo {
 	private static final int INFO_PAD_SIZE = 72;
-	private static final int OUTPUT_LINE_WIDTH = 80;
+
 
 	// Map of groupId:artifactId -> Map of version number to release date
 	static final Map<String, Map<String, LocalDate>> dependencyVersionReleaseDates = Maps.newHashMap();
@@ -68,7 +66,6 @@ public class LibYearMojo extends AbstractMojo {
 	protected static long TIMEOUT_SECONDS = 10;
 	protected static String SEARCH_URI = "https://search.maven.org";
 
-
 	protected final RepositorySystem repositorySystem;
 
 	protected final org.eclipse.aether.RepositorySystem aetherRepositorySystem;
@@ -78,19 +75,9 @@ public class LibYearMojo extends AbstractMojo {
 
 	@Parameter(defaultValue = "${settings}", readonly = true)
 	protected Settings settings;
-
-	@Parameter
-	protected RuleSet ruleSet;
-
+	
 	@Parameter(property = "maven.version.ignore")
 	protected Set<String> ignoredVersions;
-
-	/**
-	 * (injected) map of {@link Wagon} instances
-	 *
-	 * @since 2.14.0
-	 */
-//	protected final Map<String, Wagon> wagonMap;
 
 	@Parameter(defaultValue = "${session}", required = true, readonly = true)
 	protected MavenSession session;
@@ -270,7 +257,6 @@ public class LibYearMojo extends AbstractMojo {
 					   org.eclipse.aether.RepositorySystem aetherRepositorySystem) {
 		this.repositorySystem = repositorySystem;
 		this.aetherRepositorySystem = aetherRepositorySystem;
-//		this.wagonMap = wagonMap;
 	}
 
 	/**
