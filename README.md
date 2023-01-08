@@ -1,4 +1,5 @@
 ![GitHub Action build status badge](https://github.com/mfoo/libyear-maven-plugin/actions/workflows/maven-tests.yml/badge.svg)
+[![Apache License, Version 2.0, January 2004](https://img.shields.io/github/license/mojohaus/versions-maven-plugin.svg?label=License)](http://www.apache.org/licenses/)
 
 # libyear-maven-plugin
 
