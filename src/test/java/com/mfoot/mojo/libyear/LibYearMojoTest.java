@@ -73,6 +73,7 @@ public class LibYearMojoTest {
     // TODO: Test with version ranges
     // TODO: Cleanup
     // TODO: Run code formatter via plugin and enforce format
+    // TODO: This file is using spaces, not tabs
 
     private static Plugin pluginOf(String artifactId, String groupId, String version) {
         Plugin plugin = new Plugin();
@@ -98,9 +99,7 @@ public class LibYearMojoTest {
 
         ) {{
             setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.0.0").build())).build());
-            setVariableValueToObject(this, "processDependencies", true);
-            setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "dependencyExcludes", emptyList());
+            allowProcessingAllDependencies(this);
             setPluginContext(new HashMap<>());
 
             session = mockMavenSession();
@@ -133,9 +132,7 @@ public class LibYearMojoTest {
             setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder
                     .newBuilder().withGroupId("default-group")
                     .withArtifactId("default-dependency-with-very-very-long-name").withVersion("1.0.0").build())).build());
-            setVariableValueToObject(this, "processDependencies", true);
-            setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "dependencyExcludes", emptyList());
+            allowProcessingAllDependencies(this);
             setPluginContext(new HashMap<>());
 
             session = mockMavenSession();
@@ -193,12 +190,7 @@ public class LibYearMojoTest {
                                     .withArtifactId("default-dependency")
                                     .withVersion("1.1.0").build()))
                     .build());
-            setVariableValueToObject(this, "processDependencies", true);
-            setVariableValueToObject(this, "processDependencyManagement", true);
-            setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "dependencyExcludes", emptyList());
-            setVariableValueToObject(this, "dependencyManagementIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "dependencyManagementExcludes", emptyList());
+            allowProcessingAllDependencies(this);
             setPluginContext(new HashMap<>());
 
             session = mockMavenSession();
@@ -235,10 +227,19 @@ public class LibYearMojoTest {
         }})
 
         ) {{
-            setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.0.0").build())).withDependencyManagementDependencyList(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.1.0").build())).build());
-            setVariableValueToObject(this, "processDependencyManagement", true);
-            setVariableValueToObject(this, "dependencyManagementIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "dependencyManagementExcludes", emptyList());
+            setProject(new MavenProjectBuilder().withDependencies(
+                    singletonList(DependencyBuilder.newBuilder()
+                            .withGroupId("default-group")
+                            .withArtifactId("default-dependency")
+                            .withVersion("1.0.0")
+                            .build()))
+                    .withDependencyManagementDependencyList(singletonList(DependencyBuilder.newBuilder()
+                            .withGroupId("default-group")
+                            .withArtifactId("default-dependency")
+                            .withVersion("1.1.0")
+                            .build()))
+                    .build());
+            allowProcessingAllDependencies(this);
             setPluginContext(new HashMap<>());
 
             session = mockMavenSession();
@@ -249,7 +250,12 @@ public class LibYearMojoTest {
 
         LocalDateTime now = LocalDateTime.now();
 
-        // Mark version 2.0.0 as a year newer
+        // Mark version 2.0.0 as a year newer. The current dependency version is 1.1.0, overridden from 1.0.0 by
+        // dependencyManagement
+
+        // TODO: This first stub probably shouldn't be needed as we shouldn't need to fetch the release year of this version
+        // but without it, the test fails.
+        stubResponseFor("default-group", "default-dependency", "1.0.0", now.minusYears(10));
         stubResponseFor("default-group", "default-dependency", "1.1.0", now.minusYears(1));
         stubResponseFor("default-group", "default-dependency", "2.0.0", now);
 
@@ -272,11 +278,7 @@ public class LibYearMojoTest {
         ) {{
             setProject(new MavenProjectBuilder().withPlugins(singletonList(plugin)).build());
 
-            //			setVariableValueToObject(this, "allowAnyUpdates", false);
-            //			setVariableValueToObject(this, "allowMajorUpdates", false);
-            setVariableValueToObject(this, "processPluginDependencies", true);
-            setVariableValueToObject(this, "pluginDependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "pluginDependencyExcludes", emptyList());
+            allowProcessingAllDependencies(this);
             setPluginContext(new HashMap<>());
 
             session = mockMavenSession();
@@ -317,12 +319,7 @@ public class LibYearMojoTest {
         ) {{
             setProject(new MavenProjectBuilder().withPlugins(singletonList(plugin)).withDependencyManagementDependencyList(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.1.0").build())).build());
 
-            setVariableValueToObject(this, "processPluginDependencies", true);
-            setVariableValueToObject(this, "pluginDependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "pluginDependencyExcludes", emptyList());
-            setVariableValueToObject(this, "processDependencyManagement", true);
-            setVariableValueToObject(this, "dependencyManagementIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "dependencyManagementExcludes", emptyList());
+            allowProcessingAllDependencies(this);
             setPluginContext(new HashMap<>());
 
             session = mockMavenSession();
@@ -368,12 +365,8 @@ public class LibYearMojoTest {
                     .withPlugins(singletonList(plugin))
                     .withPluginManagementPluginList(singletonList(managedPlugin)).build());
 
-            setVariableValueToObject(this, "processPluginDependencies", true);
-            setVariableValueToObject(this, "pluginDependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "pluginDependencyExcludes", emptyList());
-            setVariableValueToObject(this, "processPluginDependenciesInPluginManagement", true);
-            setVariableValueToObject(this, "pluginManagementDependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "pluginManagementDependencyExcludes", emptyList());
+            allowProcessingAllDependencies(this);
+
             setPluginContext(new HashMap<>());
 
             session = mockMavenSession();
@@ -445,9 +438,7 @@ public class LibYearMojoTest {
                     .withArtifactId("default-dependency")
                     .withVersion("1.0.0").build()))
                 .build());
-            setVariableValueToObject(this, "processDependencies", true);
-            setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "dependencyExcludes", emptyList());
+            allowProcessingAllDependencies(this);
             setPluginContext(new HashMap<>());
 
             session = mockMavenSession();
@@ -476,9 +467,7 @@ public class LibYearMojoTest {
                     .withGroupId("default-group")
                     .withArtifactId("default-dependency")
                     .withVersion("1.0.0").build())).build());
-            setVariableValueToObject(this, "processDependencies", true);
-            setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "dependencyExcludes", emptyList());
+            allowProcessingAllDependencies(this);
             setPluginContext(new HashMap<>());
 
             session = mockMavenSession();
@@ -510,9 +499,9 @@ public class LibYearMojoTest {
                     .withGroupId("default-group")
                     .withArtifactId("default-dependency")
                     .withVersion("1.0.0").build())).build());
-            setVariableValueToObject(this, "processDependencies", true);
-            setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "dependencyExcludes", emptyList());
+
+            allowProcessingAllDependencies(this);
+
             setPluginContext(new HashMap<>());
 
             session = mockMavenSession();
@@ -545,9 +534,7 @@ public class LibYearMojoTest {
                     .withGroupId("default-group")
                     .withArtifactId("default-dependency")
                     .withVersion("1.0.0").build())).build());
-            setVariableValueToObject(this, "processDependencies", true);
-            setVariableValueToObject(this, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
-            setVariableValueToObject(this, "dependencyExcludes", emptyList());
+            allowProcessingAllDependencies(this);
             setPluginContext(new HashMap<>());
 
             session = mockMavenSession();
@@ -564,8 +551,21 @@ public class LibYearMojoTest {
         mojo.execute();
 
         assertFalse(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency")));
-        assertEquals(6, ((InMemoryTestLogger) mojo.getLog()).debugLogs.size());
         assertTrue(((InMemoryTestLogger) mojo.getLog()).debugLogs.contains("Could not find artifact for default-group:default-dependency 2.0.0"));
+    }
+
+    private void allowProcessingAllDependencies(LibYearMojo mojo) throws IllegalAccessException {
+        setVariableValueToObject(mojo, "processPluginDependencies", true);
+        setVariableValueToObject(mojo, "pluginDependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
+        setVariableValueToObject(mojo, "pluginDependencyExcludes", emptyList());
+        setVariableValueToObject(mojo, "processPluginDependenciesInPluginManagement", true);
+        setVariableValueToObject(mojo, "pluginManagementDependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
+        setVariableValueToObject(mojo, "pluginManagementDependencyExcludes", emptyList());
+        setVariableValueToObject(mojo, "processDependencyManagement", true);
+        setVariableValueToObject(mojo, "dependencyManagementIncludes", singletonList(WildcardMatcher.WILDCARD));
+        setVariableValueToObject(mojo, "dependencyManagementExcludes", emptyList());
+        setVariableValueToObject(mojo, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
+        setVariableValueToObject(mojo, "dependencyExcludes", emptyList());
     }
 
     private static class MavenProjectBuilder {

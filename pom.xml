@@ -8,7 +8,24 @@
 	<version>0.0.1-SNAPSHOT</version>
 
 	<name>libyear-maven-plugin Maven Mojo</name>
-	<url>http://maven.apache.org</url>
+	<description>This plugin helps you see how outdated your Maven project dependencies are via the libyear dependency freshness measure.</description>
+	<url>https://github.com/mfoo/libyear-maven-plugin</url>
+	<issueManagement>
+		<system>GitHub</system>
+		<url>https://github.com/mfoo/libyear-maven-plugin/issues</url>
+	</issueManagement>
+	<inceptionYear>2023</inceptionYear>
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+	<prerequisites>
+		<maven>3.6.3</maven>
+	</prerequisites>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -50,11 +67,6 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.codehaus.mojo</groupId>
-			<artifactId>versions-maven-plugin</artifactId>
-			<version>${codehaus.versions.dependencies.version}</version>
-		</dependency>
-		<dependency>
 			<groupId>org.codehaus.mojo.versions</groupId>
 			<artifactId>versions-common</artifactId>
 			<version>${codehaus.versions.dependencies.version}</version>
@@ -94,6 +106,7 @@
 			<artifactId>json</artifactId>
 			<version>20220924</version>
 		</dependency>
+
 		<dependency>
 			<groupId>org.apache.maven.wagon</groupId>
 			<artifactId>wagon-provider-api</artifactId>
@@ -128,6 +141,11 @@
 			<version>2.35.0</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>31.1-jre</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -141,6 +159,19 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-plugin-plugin</artifactId>
 				<version>3.7.0</version>
+				<executions>
+					<execution>
+						<id>default-descriptor</id>
+						<phase>process-classes</phase>
+					</execution>
+					<execution>
+						<!-- generate help goal -->
+						<id>help-goal</id>
+						<goals>
+							<goal>helpmojo</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -202,7 +233,39 @@
 					</execution>
 				</executions>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-site-plugin</artifactId>
+				<version>3.12.1</version>
+			</plugin>
 		</plugins>
 	</build>
+
+	<reporting>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-plugin-report-plugin</artifactId>
+				<version>3.7.0</version>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-project-info-reports-plugin</artifactId>
+				<version>3.4.1</version>
+				<reportSets>
+					<reportSet>
+						<reports>
+							<report>index</report>
+							<report>team</report>
+							<report>dependency-info</report>
+							<report>issue-management</report>
+							<report>licenses</report>
+							<report>scm</report>
+						</reports>
+					</reportSet>
+				</reportSets>
+			</plugin>
+		</plugins>
+	</reporting>
 </project>
 
