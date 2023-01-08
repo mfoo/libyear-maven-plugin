@@ -50,6 +50,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -64,11 +65,14 @@ import static java.util.Collections.emptySet;
 import static org.codehaus.mojo.versions.filtering.DependencyFilter.filterDependencies;
 import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractDependenciesFromDependencyManagement;
 
+/**
+ * Analyze dependencies and calculate how old they are.
+ *
+ */
 // TODO: Investigate setting "aggregator = true"
-@Mojo(name = "libyear-report", threadSafe = true, defaultPhase = LifecyclePhase.VERIFY)
+@Mojo(name = "libyear-report", threadSafe = false /* TODO: Verify */, defaultPhase = LifecyclePhase.VERIFY)
 public class LibYearMojo extends AbstractMojo {
 	private static final int INFO_PAD_SIZE = 72;
-
 
 	// Map of groupId:artifactId -> Map of version number to release date
 	static final Map<String, Map<String, LocalDate>> dependencyVersionReleaseDates = Maps.newHashMap();
@@ -92,8 +96,10 @@ public class LibYearMojo extends AbstractMojo {
 	@Parameter(defaultValue = "${settings}", readonly = true)
 	protected Settings settings;
 
-	@Parameter(property = "maven.version.ignore")
-	protected Set<String> ignoredVersions;
+	// TODO: Add test coverage for this before exposing it as an option
+//	@Parameter(property = "maven.version.ignore")
+//	protected Set<String> ignoredVersions;
+	private final Set<String> ignoredVersions = new HashSet<>();
 
 	@Parameter(defaultValue = "${session}", required = true, readonly = true)
 	protected MavenSession session;
@@ -101,11 +107,30 @@ public class LibYearMojo extends AbstractMojo {
 	/**
 	 * Whether to allow snapshots when searching for the latest version of an artifact.
 	 *
-	 * @since 1.0-alpha-1rulesUrirulesUri
+	 * @since 1.0.0
 	 */
 	@Parameter(property = "allowSnapshots", defaultValue = "false")
 	protected boolean allowSnapshots;
 
+	/**
+	 * Only take these artifacts into consideration.
+	 * <p>
+	 * Comma-separated list of extended GAV patterns.
+	 *
+	 * <p>
+	 * Extended GAV: groupId:artifactId:version:type:classifier:scope
+	 * </p>
+	 * <p>
+	 * The wildcard "*" can be used as the only, first, last or both characters in each token.
+	 * The version token does support version ranges.
+	 * </p>
+	 *
+	 * <p>
+	 * Example: {@code "mygroup:artifact:*,*:*:*:*:*:compile"}
+	 * </p>
+	 *
+	 * @since 1.0.0
+	 */
 	@Parameter(property = "pluginManagementDependencyIncludes", defaultValue = WildcardMatcher.WILDCARD)
 	protected List<String> pluginManagementDependencyIncludes;
 
@@ -122,25 +147,35 @@ public class LibYearMojo extends AbstractMojo {
 	 * Example: {@code "mygroup:artifact:*,othergroup:*,anothergroup"}
 	 * </p>
 	 *
-	 * @since 2.12.0
+	 * @since 1.0.0
 	 */
 	@Parameter(property = "pluginManagementDependencyExcludes")
 	protected List<String> pluginManagementDependencyExcludes;
 
-	@Parameter(property = "processDependencyManagementTransitive", defaultValue = "false")
-	private boolean processDependencyManagementTransitive;
+	// TODO: Add test coverage for this before exposing it as an option
+	// @Parameter(property = "processDependencyManagementTransitive", defaultValue = "false")
+	// private boolean processDependencyManagementTransitive;
+	private final boolean processDependencyManagementTransitive = false;
 
-	@Parameter(property = "processDependencyManagement", defaultValue = "true")
-	private boolean processDependencyManagement;
+	// TODO: Add test coverage for this before exposing it as an option
+	//	@Parameter(property = "processDependencyManagement", defaultValue = "true")
+	//	private boolean processDependencyManagement;
+	private final boolean processDependencyManagement = true;
 
-	@Parameter(property = "processDependencies", defaultValue = "true")
-	protected boolean processDependencies;
+	// TODO: Add test coverage for this before exposing it as an option
+	//	@Parameter(property = "processDependencies", defaultValue = "true")
+	//	protected boolean processDependencies;
+	private final boolean processDependencies = true;
 
-	@Parameter(property = "processPluginDependenciesInPluginManagement", defaultValue = "true")
-	private boolean processPluginDependenciesInPluginManagement;
+	// TODO: Add test coverage for this before exposing it as an option
+	//	@Parameter(property = "processPluginDependenciesInPluginManagement", defaultValue = "true")
+	//	private boolean processPluginDependenciesInPluginManagement;
+	private final boolean processPluginDependenciesInPluginManagement = true;
 
-	@Parameter(property = "processPluginDependencies", defaultValue = "true")
-	protected boolean processPluginDependencies;
+	// TODO: Add test coverage for this before exposing it as an option
+	//	@Parameter(property = "processPluginDependencies", defaultValue = "true")
+	//	protected boolean processPluginDependencies;
+	private final boolean processPluginDependencies = true;
 
 	private VersionsHelper helper;
 
@@ -157,7 +192,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * Example: {@code "mygroup:artifact:*,othergroup:*,anothergroup"}
 	 * </p>
 	 *
-	 * @since 2.12.0
+	 * @since 1.0.0
 	 */
 	@Parameter(property = "pluginDependencyIncludes", defaultValue = WildcardMatcher.WILDCARD)
 	protected List<String> pluginDependencyIncludes;
@@ -175,7 +210,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * Example: {@code "mygroup:artifact:*,othergroup:*,anothergroup"}
 	 * </p>
 	 *
-	 * @since 2.12.0
+	 * @since 1.0.0
 	 */
 	@Parameter(property = "pluginDependencyExcludes")
 	protected List<String> pluginDependencyExcludes;
@@ -197,7 +232,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * Example: {@code "mygroup:artifact:*,*:*:*:*:*:compile"}
 	 * </p>
 	 *
-	 * @since 2.12.0
+	 * @since 1.0.0
 	 */
 	@Parameter(property = "dependencyIncludes", defaultValue = WildcardMatcher.WILDCARD)
 	protected List<String> dependencyIncludes;
@@ -219,7 +254,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * Example: {@code "mygroup:artifact:*,*:*:*:*:*:provided,*:*:*:*:*:system"}
 	 * </p>
 	 *
-	 * @since 2.12.0
+	 * @since 1.0.0
 	 */
 	@Parameter(property = "dependencyExcludes")
 	protected List<String> dependencyExcludes;
@@ -241,7 +276,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * Example: {@code "mygroup:artifact:*,*:*:*:*:*:compile"}
 	 * </p>
 	 *
-	 * @since 2.12.0
+	 * @since 1.0.0
 	 */
 	@Parameter(property = "dependencyManagementIncludes", defaultValue = WildcardMatcher.WILDCARD)
 	private List<String> dependencyManagementIncludes;
@@ -263,7 +298,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * Example: {@code "mygroup:artifact:*,*:*:*:*:*:provided,*:*:*:*:*:system"}
 	 * </p>
 	 *
-	 * @since 2.12.0
+	 * @since 1.0.0
 	 */
 	@Parameter(property = "dependencyManagementExcludes")
 	private List<String> dependencyManagementExcludes;
@@ -279,7 +314,6 @@ public class LibYearMojo extends AbstractMojo {
 	 * Setter for property 'project'.
 	 *
 	 * @param project Value to set for property 'project'.
-	 * @since 1.0-alpha-1
 	 */
 	public void setProject(MavenProject project) {
 		this.project = project;

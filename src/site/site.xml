@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright 2023 Martin Foot
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<project>
+    <skin>
+        <groupId>org.apache.maven.skins</groupId>
+        <artifactId>maven-fluido-skin</artifactId>
+        <version>1.11.1</version>
+    </skin>
+
+    <body>
+        <menu name="Overview">
+            <!-- TODO: Add an example / usage section -->
+            <item href="index.html" name="Introduction"/>
+            <item href="plugin-info.html" name="Usage" />
+            <item href="issue-management.html" name="Reporting issues" />
+
+            <!-- TODO: The license text for the Apache 2 license doesn't seem to be included in this generated page -->
+            <item href="licenses.html" name="Licences" />
+        </menu>
+    </body>
+
+    <custom>
+        <fluidoSkin>
+            <gitHub>
+                <projectId>mfoo/libyear-maven-plugin</projectId>
+                <ribbonOrientation>right</ribbonOrientation>
+            </gitHub>
+        </fluidoSkin>
+    </custom>
+</project>
