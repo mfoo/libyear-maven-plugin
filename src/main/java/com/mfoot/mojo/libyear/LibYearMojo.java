@@ -97,8 +97,8 @@ public class LibYearMojo extends AbstractMojo {
 	protected Settings settings;
 
 	// TODO: Add test coverage for this before exposing it as an option
-//	@Parameter(property = "maven.version.ignore")
-//	protected Set<String> ignoredVersions;
+	//	@Parameter(property = "maven.version.ignore")
+	//	protected Set<String> ignoredVersions;
 	private final Set<String> ignoredVersions = new HashSet<>();
 
 	@Parameter(defaultValue = "${session}", required = true, readonly = true)
@@ -157,9 +157,7 @@ public class LibYearMojo extends AbstractMojo {
 	// private boolean processDependencyManagementTransitive;
 	private final boolean processDependencyManagementTransitive = false;
 
-	// TODO: Add test coverage for this before exposing it as an option
-	//	@Parameter(property = "processDependencyManagement", defaultValue = "true")
-	//	private boolean processDependencyManagement;
+	@Parameter(property = "processDependencyManagement", defaultValue = "true")
 	private final boolean processDependencyManagement = true;
 
 	// TODO: Add test coverage for this before exposing it as an option
