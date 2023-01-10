@@ -146,6 +146,16 @@
 			<artifactId>guava</artifactId>
 			<version>31.1-jre</version>
 		</dependency>
+		<dependency>
+			<!--
+				Logging for this plugin uses SLF4J, but we don't want to force a logger implementation on projects using
+				the plugin, so ensure this is test-scoped.
+			-->
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
+			<version>1.7.36</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
