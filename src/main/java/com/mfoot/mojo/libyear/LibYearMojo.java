@@ -67,34 +67,58 @@ import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractDependen
 
 /**
  * Analyze dependencies and calculate how old they are.
- *
  */
-// TODO: Investigate setting "aggregator = true"
-@Mojo(name = "libyear-report", threadSafe = false /* TODO: Verify */, defaultPhase = LifecyclePhase.VERIFY)
+// TODO: Test whether or not we can set `threadSafe = true`
+@Mojo(name = "libyear-report", defaultPhase = LifecyclePhase.VERIFY)
 public class LibYearMojo extends AbstractMojo {
+	/**
+	 * Screen width for formatting the output number of libyears
+	 */
 	private static final int INFO_PAD_SIZE = 72;
 
-	// Map of groupId:artifactId -> Map of version number to release date
+	/**
+	 * Cache to store the release dates of dependencies to reduce the number of API calls to {@link #SEARCH_URI}
+	 */
 	static final Map<String, Map<String, LocalDate>> dependencyVersionReleaseDates = Maps.newHashMap();
 
 	/**
 	 * Wait until reaching the last project before executing sonar when attached to phase
 	 */
-	// TODO: This is designed to handle parallel plugin execution, but this is untested, especially with the cache
+	// TODO: Investigate setting "aggregator = true" in the @Mojo class annotation - is this necessary?
 	static final AtomicInteger readyProjectsCounter = new AtomicInteger();
+
+	/**
+	 * Track the running total of how many libweeks outdated we are. Used in multi-module builds.
+	 */
 	static final AtomicLong libWeeksOutDated = new AtomicLong();
-	protected static long TIMEOUT_SECONDS = 10;
-	protected static String SEARCH_URI = "https://search.maven.org";
 
-	protected final RepositorySystem repositorySystem;
+	/**
+	 * HTTP timeout for making calls to {@link #SEARCH_URI}
+	 */
+	private static long MAVEN_API_HTTP_TIMEOUT_SECONDS = 10;
 
-	protected final org.eclipse.aether.RepositorySystem aetherRepositorySystem;
+	/**
+	 * API endpoint to query dependency release dates for age calculations.
+	 *
+	 */
+	// TODO: Consider users requiring HTTP proxies
+	private static String SEARCH_URI = "https://search.maven.org";
 
+	private final RepositorySystem repositorySystem;
+	private final org.eclipse.aether.RepositorySystem aetherRepositorySystem;
+	private VersionsHelper helper;
+
+	/**
+	 * The Maven Project that the plugin is being executed on. Used for accessing e.g. the list of dependencies.
+	 */
 	@Parameter(defaultValue = "${project}", required = true, readonly = true)
-	protected MavenProject project;
+	private MavenProject project;
 
+	/**
+	 * The Maven Settings that are being used, e.g. ~/.m2/settings.xml.
+	 */
 	@Parameter(defaultValue = "${settings}", readonly = true)
-	protected Settings settings;
+	private Settings settings;
 
 	// TODO: Add test coverage for this before exposing it as an option
 	//	@Parameter(property = "maven.version.ignore")
@@ -102,15 +126,17 @@ public class LibYearMojo extends AbstractMojo {
 	private final Set<String> ignoredVersions = new HashSet<>();
 
 	@Parameter(defaultValue = "${session}", required = true, readonly = true)
-	protected MavenSession session;
+	private MavenSession session;
 
 	/**
 	 * Whether to allow snapshots when searching for the latest version of an artifact.
 	 *
 	 * @since 1.0.0
 	 */
-	@Parameter(property = "allowSnapshots", defaultValue = "false")
-	protected boolean allowSnapshots;
+	// TODO: Add test coverage for this before exposing it as an option
+	// @Parameter(property = "allowSnapshots", defaultValue = "false")
+	// protected boolean allowSnapshots;
+	private boolean allowSnapshots = false;
 
 	/**
 	 * Only take these artifacts into consideration.
@@ -132,7 +158,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * @since 1.0.0
 	 */
 	@Parameter(property = "pluginManagementDependencyIncludes", defaultValue = WildcardMatcher.WILDCARD)
-	protected List<String> pluginManagementDependencyIncludes;
+	private List<String> pluginManagementDependencyIncludes;
 
 	/**
 	 * <p>Exclude these artifacts into consideration:<br/>
@@ -150,16 +176,26 @@ public class LibYearMojo extends AbstractMojo {
 	 * @since 1.0.0
 	 */
 	@Parameter(property = "pluginManagementDependencyExcludes")
-	protected List<String> pluginManagementDependencyExcludes;
+	private List<String> pluginManagementDependencyExcludes;
 
 	// TODO: Add test coverage for this before exposing it as an option
 	// @Parameter(property = "processDependencyManagementTransitive", defaultValue = "false")
 	// private boolean processDependencyManagementTransitive;
 	private final boolean processDependencyManagementTransitive = false;
 
+	/**
+	 * Whether to consider the dependencyManagement pom section. If this is set to false, dependencyManagement is
+	 * ignored.
+	 *
+	 * @since 1.0.
+	 */
 	@Parameter(property = "processDependencyManagement", defaultValue = "true")
 	private final boolean processDependencyManagement = true;
 
+	/**
+	 * Whether to consider the dependencies pom section. If this is set to false the plugin won't analyze dependencies,
+	 * but it might analyze e.g. plugins depending on configuration.
+	 */
 	// TODO: Add test coverage for this before exposing it as an option
 	//	@Parameter(property = "processDependencies", defaultValue = "true")
 	//	protected boolean processDependencies;
@@ -174,8 +210,6 @@ public class LibYearMojo extends AbstractMojo {
 	//	@Parameter(property = "processPluginDependencies", defaultValue = "true")
 	//	protected boolean processPluginDependencies;
 	private final boolean processPluginDependencies = true;
-
-	private VersionsHelper helper;
 
 	/**
 	 * <p>Only take these artifacts into consideration:<br/>
@@ -193,7 +227,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * @since 1.0.0
 	 */
 	@Parameter(property = "pluginDependencyIncludes", defaultValue = WildcardMatcher.WILDCARD)
-	protected List<String> pluginDependencyIncludes;
+	private List<String> pluginDependencyIncludes;
 
 	/**
 	 * <p>Exclude these artifacts into consideration:<br/>
@@ -211,7 +245,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * @since 1.0.0
 	 */
 	@Parameter(property = "pluginDependencyExcludes")
-	protected List<String> pluginDependencyExcludes;
+	private List<String> pluginDependencyExcludes;
 
 	/**
 	 * Only take these artifacts into consideration.
@@ -233,7 +267,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * @since 1.0.0
 	 */
 	@Parameter(property = "dependencyIncludes", defaultValue = WildcardMatcher.WILDCARD)
-	protected List<String> dependencyIncludes;
+	private List<String> dependencyIncludes;
 
 	/**
 	 * Exclude these artifacts from consideration.
@@ -255,7 +289,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * @since 1.0.0
 	 */
 	@Parameter(property = "dependencyExcludes")
-	protected List<String> dependencyExcludes;
+	private List<String> dependencyExcludes;
 
 	/**
 	 * Only take these artifacts into consideration.
@@ -313,22 +347,65 @@ public class LibYearMojo extends AbstractMojo {
 	 *
 	 * @param project Value to set for property 'project'.
 	 */
-	public void setProject(MavenProject project) {
+	protected void setProject(MavenProject project) {
 		this.project = project;
 	}
 
+	/**
+	 * Setter for property 'session'.
+	 *
+	 * @param session Value to set for property 'session'.
+	 */
+	protected void setSession(MavenSession session) {
+		this.session = session;
+	}
+
+	/**
+	 * Set the search URI
+	 */
+	protected void setSearchUri(String uri) {
+		SEARCH_URI = uri;
+	}
+
+	/**
+	 * Setter for the HTTP timeout for API calls
+	 */
+	protected void setHttpTimeout(long seconds) {
+		MAVEN_API_HTTP_TIMEOUT_SECONDS = seconds;
+	}
+
+	/**
+	 * Check if the mojo is configured to consider dependencyManagement
+	 *
+	 * @return	whether the mojo is configured to consider dependencyManagement
+	 */
 	public boolean isProcessingDependencyManagement() {
 		return processDependencyManagement;
 	}
 
+	/**
+	 * Check if the mojo is configured to consider dependencies
+	 *
+	 * @return	whether the mojo is configured to consider dependencies
+	 */
 	public boolean isProcessingDependencies() {
 		return processDependencies;
 	}
 
+	/**
+	 * Check if the mojo is configured to consider dependencies of plugins
+	 *
+	 * @return	whether the mojo is configured to consider plugin dependencies
+	 */
 	public boolean isProcessingPluginDependencies() {
 		return processPluginDependencies;
 	}
 
+	/**
+	 * Check if the mojo is configured to consider dependencies of plugins that are overridden in dependencyManagement
+	 *
+	 * @return	whether the mojo is configured to consider plugin dependencies that are overridden in dependencyManagement
+	 */
 	public boolean isProcessPluginDependenciesInDependencyManagement() {
 		return processPluginDependenciesInPluginManagement;
 	}
@@ -358,6 +435,11 @@ public class LibYearMojo extends AbstractMojo {
 				|| Objects.equals(managedDependency.getVersion(), dependency.getVersion());
 	}
 
+	/**
+	 * Main entry point for the plugin.
+	 *
+	 * @throws MojoExecutionException	On failure, such as upstream HTTP issues
+	 */
 	public void execute() throws MojoExecutionException {
 		Set<Dependency> dependencyManagement = emptySet();
 
@@ -407,7 +489,7 @@ public class LibYearMojo extends AbstractMojo {
 		}
 	}
 
-	public VersionsHelper getHelper() throws MojoExecutionException {
+	private VersionsHelper getHelper() throws MojoExecutionException {
 		if (helper == null) {
 			helper = new DefaultVersionsHelper.Builder()
 					.withRepositorySystem(repositorySystem)
@@ -420,9 +502,12 @@ public class LibYearMojo extends AbstractMojo {
 		return helper;
 	}
 
-	private void logUpdates(Map<Dependency, ArtifactVersions> updates, String section)
-			throws IOException, InterruptedException {
-
+	/**
+	 *
+	 * @param updates
+	 * @param section
+	 */
+	private void logUpdates(Map<Dependency, ArtifactVersions> updates, String section) {
 		Map<String, Pair<LocalDate, LocalDate>> dependencyVersionUpdates = Maps.newHashMap();
 
 		for (ArtifactVersions versions : updates.values()) {
@@ -479,13 +564,20 @@ public class LibYearMojo extends AbstractMojo {
 		getLog().info("");
 	}
 
-	private float logDependencyUpdates(String section, Map<String, Pair<LocalDate, LocalDate>> dependencyVersionUpdates) {
+	/**
+	 * Given a set of outdated dependencies, print how many libyears outdated they are to the screen.
+	 *
+	 * @param pomSection	The section of the pom we are analyzing
+	 * @param outdatedDependencies	The outdated dependencies
+	 * @return	A total libyear count for the provided dependencies
+	 */
+	private float logDependencyUpdates(String pomSection, Map<String, Pair<LocalDate, LocalDate>> outdatedDependencies) {
 		float[] yearsOutdated = {0};
 
-		getLog().info("The following dependencies in " + section + " have newer versions:");
+		getLog().info("The following dependencies in " + pomSection + " have newer versions:");
 
 		// TODO: Sort alphabetically?
-		dependencyVersionUpdates.forEach((dep, dates) -> {
+		outdatedDependencies.forEach((dep, dates) -> {
 			LocalDate currentReleaseDate = dates.getLeft();
 			LocalDate latestReleaseDate = dates.getRight();
 
@@ -517,9 +609,16 @@ public class LibYearMojo extends AbstractMojo {
 		return yearsOutdated[0];
 	}
 
-	private Optional<LocalDate> getReleaseDate(String groupId, String artifactId, String version)
-			throws IOException, InterruptedException {
-
+	/**
+	 * Make an API call to {@link #SEARCH_URI} to fetch the release date of the specified artifact. Uses the cache in
+	 * {@link #dependencyVersionReleaseDates} if possible.
+	 *
+	 * @param groupId	The required artifact's groupId
+	 * @param artifactId	The required artifact's artifactId
+	 * @param version	The required artifact's version
+	 * @return	The creation date of the artifact
+	 */
+	private Optional<LocalDate> getReleaseDate(String groupId, String artifactId, String version) {
 		String ga = groupId + ":" + artifactId;
 		Map<String, LocalDate> versionReleaseDates = dependencyVersionReleaseDates.getOrDefault(ga, Maps.newHashMap());
 		if (versionReleaseDates.containsKey(version)) {
@@ -527,16 +626,7 @@ public class LibYearMojo extends AbstractMojo {
 		}
 
 		try {
-			URI artifactUri = URI.create(String.format("%s/solrsearch/select?q=g:%s+AND+a:%s+AND+v:%s&wt=json", SEARCH_URI, groupId, artifactId, version));
-
-			HttpRequest request = HttpRequest.newBuilder()
-					.uri(artifactUri)
-					.version(HttpClient.Version.HTTP_2)
-					.timeout(Duration.of(TIMEOUT_SECONDS, SECONDS))
-					.GET()
-					.build();
-			HttpClient client = HttpClient.newBuilder().build();
-			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+			HttpResponse<String> response = fetchReleaseDate(groupId, artifactId, version);
 
 			if (response.statusCode() != 200) {
 				getLog().error(String.format("Failed to fetch release date for %s:%s %s", groupId, artifactId, version));
@@ -545,11 +635,9 @@ public class LibYearMojo extends AbstractMojo {
 			}
 
 			JSONObject json = new JSONObject(response.body());
-			// TODO: Handle packages that aren't on Maven Central - currently they will fail
-			// TODO: Support exclusions
 			JSONObject queryResponse = json.getJSONObject("response");
 			if (queryResponse.getLong("numFound") != 0) {
-				Long epochTime = queryResponse.getJSONArray("docs").getJSONObject(0).getLong("timestamp");
+				long epochTime = queryResponse.getJSONArray("docs").getJSONObject(0).getLong("timestamp");
 
 				getLog().debug("Found release time " + epochTime + " for " + groupId + ":" + artifactId + ":" + version);
 				LocalDate releaseDate = Instant.ofEpochMilli(epochTime).atZone(ZoneId.systemDefault()).toLocalDate();
@@ -567,6 +655,27 @@ public class LibYearMojo extends AbstractMojo {
 		}
 	}
 
+	/**
+	 * Make the API call to fetch the release date
+	 */
+	private static HttpResponse<String> fetchReleaseDate(String groupId, String artifactId, String version) throws IOException, InterruptedException {
+		URI artifactUri = URI.create(String.format("%s/solrsearch/select?q=g:%s+AND+a:%s+AND+v:%s&wt=json", SEARCH_URI, groupId, artifactId, version));
+
+		HttpRequest request = HttpRequest.newBuilder()
+				.uri(artifactUri)
+				.version(HttpClient.Version.HTTP_2)
+				.timeout(Duration.of(MAVEN_API_HTTP_TIMEOUT_SECONDS, SECONDS))
+				.GET()
+				.build();
+		return HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
+	}
+
+	/**
+	 * Calculate if this is the last project in a multi-project pom. This is used to show a total "libyears outdated"
+	 * figure for this project and all child projects.
+	 *
+	 * @return Whether this is the last project to be analysed by the plugin
+	 */
 	private boolean isLastProjectInReactor() {
 		return readyProjectsCounter.incrementAndGet() != session.getProjects().size();
 	}
