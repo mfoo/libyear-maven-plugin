@@ -27,6 +27,7 @@
             <item href="index.html" name="Introduction"/>
             <item href="plugin-info.html" name="Usage" />
             <item href="issue-management.html" name="Reporting issues" />
+            <item href="apidocs/index.html" name="Javadoc" />
 
             <!-- TODO: The license text for the Apache 2 license doesn't seem to be included in this generated page -->
             <item href="licenses.html" name="Licences" />

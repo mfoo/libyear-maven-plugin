@@ -105,8 +105,8 @@ public class LibYearMojoTest {
 			allowProcessingAllDependencies(this);
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -141,8 +141,8 @@ public class LibYearMojoTest {
 			allowProcessingAllDependencies(this);
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -203,8 +203,8 @@ public class LibYearMojoTest {
 			allowProcessingAllDependencies(this);
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -251,8 +251,8 @@ public class LibYearMojoTest {
 			setVariableValueToObject(this, "processDependencyManagement", false);
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -300,8 +300,8 @@ public class LibYearMojoTest {
 			allowProcessingAllDependencies(this);
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -339,8 +339,8 @@ public class LibYearMojoTest {
 			allowProcessingAllDependencies(this);
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -380,8 +380,8 @@ public class LibYearMojoTest {
 			allowProcessingAllDependencies(this);
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -427,8 +427,8 @@ public class LibYearMojoTest {
 
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -499,8 +499,8 @@ public class LibYearMojoTest {
 			allowProcessingAllDependencies(this);
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -528,9 +528,9 @@ public class LibYearMojoTest {
 			allowProcessingAllDependencies(this);
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
-			TIMEOUT_SECONDS = 1;
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
+			setHttpTimeout(1);
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -562,8 +562,8 @@ public class LibYearMojoTest {
 
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -595,8 +595,8 @@ public class LibYearMojoTest {
 			allowProcessingAllDependencies(this);
 			setPluginContext(new HashMap<>());
 
-			session = mockMavenSession();
-			SEARCH_URI = "http://localhost:8080";
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
 
 			setLog(new InMemoryTestLogger());
 		}};
