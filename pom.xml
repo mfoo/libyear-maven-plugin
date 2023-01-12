@@ -102,20 +102,21 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.apache.maven</groupId>
+			<artifactId>maven-settings</artifactId>
+			<version>3.8.6</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
 			<groupId>org.json</groupId>
 			<artifactId>json</artifactId>
 			<version>20220924</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.maven.wagon</groupId>
-			<artifactId>wagon-provider-api</artifactId>
-			<version>3.5.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.aether</groupId>
 			<artifactId>aether-api</artifactId>
 			<version>1.1.0</version>
+			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
@@ -136,6 +137,23 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+			<version>4.10.0</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>javax.inject</groupId>
+			<artifactId>javax.inject</artifactId>
+			<version>1</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.12.0</version>
+		</dependency>
+		<dependency>
 			<groupId>com.github.tomakehurst</groupId>
 			<artifactId>wiremock-jre8</artifactId>
 			<version>2.35.0</version>
@@ -145,6 +163,11 @@
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
 			<version>31.1-jre</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.plexus</groupId>
+			<artifactId>plexus-utils</artifactId>
+			<version>3.5.0</version>
 		</dependency>
 		<dependency>
 			<!--
@@ -208,21 +231,13 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
+				<version>3.5.0</version>
 				<configuration>
-					<failOnWarning>false</failOnWarning> <!-- TODO: Change to true after fixing "Unable to process LibYearMojo" error -->
+					<failOnWarning>true</failOnWarning>
 					<ignoreNonCompile>true</ignoreNonCompile>
 				</configuration>
 				<executions>
 					<execution>
-						<configuration>
-							<usedDependencies>
-								<!-- TODO: This might not be necessary. I need to fix the "Unable to process
-								LibYearMojo" in plugin output before reconsidering -->
-								<usedDependency>org.json:json</usedDependency>
-							</usedDependencies>
-<!--							<ignoredUnusedDeclaredDependencies>-->
-<!--							</ignoredUnusedDeclaredDependencies>-->
-						</configuration>
 						<goals>
 							<goal>analyze-only</goal>
 						</goals>
