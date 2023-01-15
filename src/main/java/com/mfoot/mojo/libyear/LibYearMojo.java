@@ -79,7 +79,7 @@ import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractDependen
  * Analyze dependencies and calculate how old they are.
  */
 // TODO: Test whether or not we can set `threadSafe = true`
-@Mojo(name = "libyear-report", defaultPhase = LifecyclePhase.VERIFY)
+@Mojo(name = "analyze", defaultPhase = LifecyclePhase.VERIFY)
 public class LibYearMojo extends AbstractMojo {
 	/**
 	 * Screen width for formatting the output number of libyears
