@@ -95,7 +95,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * Wait until reaching the last project before executing sonar when attached to phase
 	 */
 	// TODO: Investigate setting "aggregator = true" in the @Mojo class annotation - is this necessary?
-	static final AtomicInteger readyProjectsCounter = new AtomicInteger();
+	static final AtomicInteger readyProjectsCounter = new AtomicInteger(0);
 
 	/**
 	 * Track the running total of how many libweeks outdated we are. Used in multi-module builds.
@@ -136,23 +136,11 @@ public class LibYearMojo extends AbstractMojo {
 	@Parameter(defaultValue = "${settings}", readonly = true)
 	private Settings settings;
 
-	// TODO: Add test coverage for this before exposing it as an option
-	//	@Parameter(property = "maven.version.ignore")
-	//	protected Set<String> ignoredVersions;
-	private final Set<String> ignoredVersions = new HashSet<>();
+	@Parameter(property = "maven.version.ignore", readonly = true)
+	protected Set<String> ignoredVersions;
 
 	@Parameter(defaultValue = "${session}", required = true, readonly = true)
 	private MavenSession session;
-
-	/**
-	 * Whether to allow snapshots when searching for the latest version of an artifact.
-	 *
-	 * @since 1.0.0
-	 */
-	// TODO: Add test coverage for this before exposing it as an option
-	// @Parameter(property = "allowSnapshots", defaultValue = "false")
-	// protected boolean allowSnapshots;
-	private boolean allowSnapshots = false;
 
 	/**
 	 * Only take these artifacts into consideration.
@@ -212,10 +200,8 @@ public class LibYearMojo extends AbstractMojo {
 	 * Whether to consider the dependencies pom section. If this is set to false the plugin won't analyze dependencies,
 	 * but it might analyze e.g. plugins depending on configuration.
 	 */
-	// TODO: Add test coverage for this before exposing it as an option
-	//	@Parameter(property = "processDependencies", defaultValue = "true")
-	//	protected boolean processDependencies;
-	private final boolean processDependencies = true;
+	@Parameter(property = "processDependencies", defaultValue = "true")
+	protected boolean processDependencies;
 
 	// TODO: Add test coverage for this before exposing it as an option
 	//	@Parameter(property = "processPluginDependenciesInPluginManagement", defaultValue = "true")
@@ -537,13 +523,13 @@ public class LibYearMojo extends AbstractMojo {
 			ArtifactVersion latest;
 			if (versions.isCurrentVersionDefined()) {
 				current = versions.getCurrentVersion().toString();
-				latest = versions.getNewestUpdate(Optional.empty(), allowSnapshots);
+				latest = versions.getNewestUpdate(Optional.empty(), false);
 			} else {
 				ArtifactVersion newestVersion =
-						versions.getNewestVersion(versions.getArtifact().getVersionRange(), allowSnapshots);
+						versions.getNewestVersion(versions.getArtifact().getVersionRange(), false);
 				current = versions.getArtifact().getVersionRange().toString();
 				latest = newestVersion == null ? null
-						: versions.getNewestUpdate(newestVersion, Optional.empty(), allowSnapshots);
+						: versions.getNewestUpdate(newestVersion, Optional.empty(), false);
 				if (latest != null
 						&& ArtifactVersions.isVersionInRange(latest, versions.getArtifact().getVersionRange())) {
 					latest = null;
@@ -583,7 +569,6 @@ public class LibYearMojo extends AbstractMojo {
 		if (yearsOutdated != 0f) {
 			getLog().info(String.format("Total years outdated: %.2f", yearsOutdated));
 		}
-		getLog().info("");
 	}
 
 	/**
@@ -596,6 +581,7 @@ public class LibYearMojo extends AbstractMojo {
 	private float logDependencyUpdates(String pomSection, Map<String, Pair<LocalDate, LocalDate>> outdatedDependencies) {
 		float[] yearsOutdated = {0};
 
+		getLog().info("");
 		getLog().info("The following dependencies in " + pomSection + " have newer versions:");
 		outdatedDependencies
 				.entrySet()
@@ -609,6 +595,8 @@ public class LibYearMojo extends AbstractMojo {
 				// updates from e.g commons-io:commons-io 2.11.0 -> 20030203.000550, despite 2.11.0 being ~15 years
 				// newer. We return here so we don't count a negative libyear count, even though the dependency may
 				// still be outdated.
+
+				// Anybody experiencing this could use the ignoredVersions setting instead
 				return;
 			}
 

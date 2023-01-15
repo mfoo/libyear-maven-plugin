@@ -34,7 +34,6 @@ class InMemoryTestLogger implements Log {
 
 	@Override
 	public void debug(CharSequence charSequence) {
-		System.out.println(charSequence);
 		debugLogs.add(charSequence.toString());
 	}
 

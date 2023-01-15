@@ -34,6 +34,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -44,6 +45,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static org.apache.maven.plugin.testing.ArtifactStubFactory.setVariableValueToObject;
 import static org.codehaus.mojo.versions.utils.MockUtils.mockAetherRepositorySystem;
@@ -162,6 +164,97 @@ public class LibYearMojoTest {
 		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
 	}
 
+	@Test
+	public void dependencyUpdateAvailableButDependencyIsExcluded() throws Exception {
+		LibYearMojo mojo = new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {{
+			put("default-dependency", new String[]{"1.0.0", "2.0.0"});
+		}})
+
+		) {{
+			setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.0.0").build())).build());
+			allowProcessingAllDependencies(this);
+
+			setVariableValueToObject(this, "dependencyExcludes", List.of("default-group:default-dependency"));
+
+			setPluginContext(new HashMap<>());
+
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
+
+			setLog(new InMemoryTestLogger());
+		}};
+
+		// No need to stub output as no API calls should be made
+
+		mojo.execute();
+
+		assertFalse(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) ->
+				l.contains("default-group:default-dependency")));
+		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
+	}
+
+	@Test
+	public void dependencyUpdateAvailableButVersionIsIgnored() throws Exception {
+		LibYearMojo mojo = new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {{
+			put("default-dependency", new String[]{"1.0.0", "2.0.0"});
+		}})
+
+		) {{
+			setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.0.0").build())).build());
+			allowProcessingAllDependencies(this);
+
+			setVariableValueToObject(this, "ignoredVersions", Set.of("2.0.0"));
+
+			setPluginContext(new HashMap<>());
+
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
+
+			setLog(new InMemoryTestLogger());
+		}};
+
+		// No need to stub output as no API calls should be made
+
+		mojo.execute();
+
+		assertFalse(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) ->
+				l.contains("default-group:default-dependency")));
+		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
+	}
+
+	@Test
+	public void dependencyUpdateAvailableButProcessingDependenciesIsDisabled() throws Exception {
+		LibYearMojo mojo = new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {{
+			put("default-dependency", new String[]{"1.0.0", "1.1.0", "2.0.0"});
+		}})
+
+		) {{
+			setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.0.0").build())).build());
+			allowProcessingAllDependencies(this);
+			setVariableValueToObject(this, "processDependencies", false);
+
+			setPluginContext(new HashMap<>());
+
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
+
+			setLog(new InMemoryTestLogger());
+		}};
+
+		LocalDateTime now = LocalDateTime.now();
+
+		// Mark version 2.0.0 as a year newer
+		// Don't stub 1.1.0, there's no need to check its version
+		stubResponseFor("default-group", "default-dependency", "1.0.0", now.minusYears(1));
+		stubResponseFor("default-group", "default-dependency", "2.0.0", now);
+
+		mojo.execute();
+
+		assertFalse(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) ->
+				l.contains("default-group:default-dependency")));
+		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
+	}
+
 	/**
 	 * The plugin should cache the result of API calls to find the release date of every dependency that it makes.
 	 * This test ensures that despite running the plugin twice, we only make one API call for each dependency version.
@@ -220,6 +313,58 @@ public class LibYearMojoTest {
 		mojo.execute();
 
 		assertTrue(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
+
+		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
+	}
+
+	/**
+	 * This test has a project with a dependency with version 1.0.0. Dependency management pins it at 1.1.0, and
+	 * 2.0.0 is available. We exclude the plugin from considering dependency management, meaning we should show the age
+	 * between 1.0.0 and 2.0.0.
+	 * @throws Exception
+	 */
+	@Test
+	public void dependencyUpdateAvailableWhenVersionSpecifiedInDependencyManagementButDependencyExcludedFromDependencyManagement() throws Exception {
+		LibYearMojo mojo = new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {{
+			put("default-dependency", new String[]{"1.0.0", "1.1.0", "2.0.0"});
+		}})
+
+		) {{
+			setProject(new MavenProjectBuilder()
+					.withDependencies(singletonList(DependencyBuilder.newBuilder()
+							.withGroupId("default-group")
+							.withArtifactId("default-dependency")
+							.withVersion("1.0.0") // This is overridden by dependencyManagement
+							.build()))
+					.withDependencyManagementDependencyList(
+							singletonList(DependencyBuilder.newBuilder()
+									.withGroupId("default-group")
+									.withArtifactId("default-dependency")
+									.withVersion("1.1.0").build()))
+					.build());
+			allowProcessingAllDependencies(this);
+
+			setVariableValueToObject(this, "dependencyManagementExcludes", List.of("default-group:default-dependency"));
+
+			setPluginContext(new HashMap<>());
+
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
+
+			setLog(new InMemoryTestLogger());
+		}};
+
+		LocalDateTime now = LocalDateTime.now();
+
+		// Mark version 2.0.0 as a year newer than the version specified by dependencyManagement
+		stubResponseFor("default-group", "default-dependency", "1.0.0", now.minusYears(2));
+		stubResponseFor("default-group", "default-dependency", "1.1.0", now.minusYears(1));
+		stubResponseFor("default-group", "default-dependency", "2.0.0", now);
+
+		mojo.execute();
+
+		assertTrue(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) ->
+				l.contains("default-group:default-dependency") && l.contains("2.00 libyears")));
 
 		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
 	}
@@ -721,6 +866,8 @@ public class LibYearMojoTest {
 	}
 
 	private void allowProcessingAllDependencies(LibYearMojo mojo) throws IllegalAccessException {
+		setVariableValueToObject(mojo, "ignoredVersions", emptySet());
+		setVariableValueToObject(mojo, "processDependencies", true);
 		setVariableValueToObject(mojo, "processPluginDependencies", true);
 		setVariableValueToObject(mojo, "pluginDependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
 		setVariableValueToObject(mojo, "pluginDependencyExcludes", emptyList());
