@@ -7,7 +7,7 @@
 	<artifactId>basic-single-dependency</artifactId>
 	<version>1.0</version>
 	<packaging>pom</packaging>
-	<name>libyear-report</name>
+	<name>libyear-analyze</name>
 	<url>http://localhost/</url>
 
 	<description>

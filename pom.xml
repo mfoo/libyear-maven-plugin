@@ -262,7 +262,7 @@
 					<execution>
 						<id>libyear-report</id>
 						<goals>
-							<goal>libyear-report</goal>
+							<goal>analyze</goal>
 						</goals>
 						<phase>install</phase>
 					</execution>
