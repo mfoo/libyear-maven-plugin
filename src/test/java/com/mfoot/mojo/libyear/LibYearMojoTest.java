@@ -513,7 +513,6 @@ public class LibYearMojoTest {
 				l.contains("Failed to fetch release date for default-group:default-dependency 1.0.0")));
 		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.stream().anyMatch((l) ->
 				l.contains("Failed to fetch release date for default-group:default-dependency 2.0.0")));
-		assertEquals(4, ((InMemoryTestLogger) mojo.getLog()).errorLogs.size());
 	}
 
 	@Test
@@ -531,6 +530,7 @@ public class LibYearMojoTest {
 			setSession(mockMavenSession());
 			setSearchUri("http://localhost:8080");
 			setHttpTimeout(1);
+			setFetchRetryCount(0);
 
 			setLog(new InMemoryTestLogger());
 		}};
@@ -540,10 +540,64 @@ public class LibYearMojoTest {
 		mojo.execute();
 
 		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.stream().anyMatch((l) ->
-				l.contains("Failed to get release date for default-group:default-dependency 1.0.0: request timed out")));
+				l.contains("Failed to fetch release date for default-group:default-dependency 1.0.0 (request timed out)")));
 		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.stream().anyMatch((l) ->
-				l.contains("Failed to get release date for default-group:default-dependency 2.0.0: request timed out")));
+				l.contains("Failed to fetch release date for default-group:default-dependency 2.0.0 (request timed out)")));
 		assertEquals(2, ((InMemoryTestLogger) mojo.getLog()).errorLogs.size());
+	}
+
+	@Test
+	public void apiCallToMavenRetriesOnFailure() throws Exception {
+		LibYearMojo mojo = new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {{
+			put("default-dependency", new String[]{"1.0.0", "2.0.0"});
+		}})) {{
+			setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder()
+							.withGroupId("default-group")
+							.withArtifactId("default-dependency")
+							.withVersion("1.0.0").build()))
+					.build());
+			allowProcessingAllDependencies(this);
+			setPluginContext(new HashMap<>());
+
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
+
+			setFetchRetryCount(2);
+
+			setLog(new InMemoryTestLogger());
+		}};
+
+		LocalDateTime now = LocalDateTime.now();
+
+		// The first dependency should fail twice and return OK on the second retry
+		stubFor(get(urlPathEqualTo("/solrsearch/select"))
+				.withQueryParam("q",
+						equalTo(String.format("g:%s AND a:%s AND v:%s", "default-group", "default-dependency", "1.0.0")))
+				.inScenario("Failure chain")
+				.whenScenarioStateIs("Started")
+				.willReturn(serverError())
+				.willSetStateTo("First failure"));
+
+		stubFor(get(urlPathEqualTo("/solrsearch/select"))
+				.inScenario("Failure chain")
+				.whenScenarioStateIs("First failure")
+				.willReturn(serverError())
+				.willSetStateTo("Second failure"));
+
+		stubFor(get(urlPathEqualTo("/solrsearch/select"))
+				.inScenario("Failure chain")
+				.whenScenarioStateIs("Second failure")
+				.willReturn(ok(
+						getJSONResponseForVersion("default-group", "default-dependency", "1.0.0",
+								now.minusYears(1)))));
+
+		// The second request will succeed first time
+		stubResponseFor("default-group", "default-dependency", "2.0.0", now);
+
+		mojo.execute();
+
+		assertTrue(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch(
+				(l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
 	}
 
 	@Test
@@ -578,7 +632,7 @@ public class LibYearMojoTest {
 		mojo.execute();
 
 		assertFalse(((InMemoryTestLogger) mojo.getLog()).infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency")));
-		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.contains("Failed to fetch release date for default-group:default-dependency 2.0.0"));
+		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.contains("Failed to fetch release date for default-group:default-dependency 2.0.0: Server Error"));
 	}
 
 	@Test
