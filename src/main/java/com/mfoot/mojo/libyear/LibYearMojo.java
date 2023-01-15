@@ -60,6 +60,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -596,11 +597,12 @@ public class LibYearMojo extends AbstractMojo {
 		float[] yearsOutdated = {0};
 
 		getLog().info("The following dependencies in " + pomSection + " have newer versions:");
-
-		// TODO: Sort alphabetically?
-		outdatedDependencies.forEach((dep, dates) -> {
-			LocalDate currentReleaseDate = dates.getLeft();
-			LocalDate latestReleaseDate = dates.getRight();
+		outdatedDependencies
+				.entrySet()
+				.stream().sorted(Map.Entry.comparingByKey())
+				.forEach((dep) -> {
+			LocalDate currentReleaseDate = dep.getValue().getLeft();
+			LocalDate latestReleaseDate = dep.getValue().getRight();
 
 			if (currentReleaseDate.isAfter(latestReleaseDate)) {
 				// This is a bug in the underlying logic, where the display-dependency-updates plugin will include
@@ -614,7 +616,7 @@ public class LibYearMojo extends AbstractMojo {
 			float libYearsOutdated = libWeeksOutdated / 52f;
 
 			String right = String.format(" %.2f libyears", libYearsOutdated);
-			String left = "  " + dep + " ";
+			String left = "  " + dep.getKey() + " ";
 
 			// TODO Handle when the name is very long
 
