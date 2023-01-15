@@ -18,12 +18,23 @@ package com.mfoot.mojo.libyear;
 
 import com.google.common.collect.Maps;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.http.HttpResponseInterceptor;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.conn.ConnectTimeoutException;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.DefaultHttpRequestRetryHandler;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.protocol.HttpContext;
+import org.apache.http.util.EntityUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -41,15 +52,14 @@ import org.json.JSONObject;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +70,6 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static java.time.temporal.ChronoUnit.SECONDS;
 import static java.util.Collections.emptySet;
 import static org.codehaus.mojo.versions.filtering.DependencyFilter.filterDependencies;
 import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractDependenciesFromDependencyManagement;
@@ -93,9 +102,15 @@ public class LibYearMojo extends AbstractMojo {
 	static final AtomicLong libWeeksOutDated = new AtomicLong();
 
 	/**
+	 * The Maven search URI quite often times out or returns HTTP 5xx. This variable controls how many
+	 * times we can retry on failure before skipping this dependency.
+	 */
+	private static int MAVEN_API_HTTP_RETRY_COUNT = 5;
+
+	/**
 	 * HTTP timeout for making calls to {@link #SEARCH_URI}
 	 */
-	private static long MAVEN_API_HTTP_TIMEOUT_SECONDS = 10;
+	private static int MAVEN_API_HTTP_TIMEOUT_SECONDS = 2;
 
 	/**
 	 * API endpoint to query dependency release dates for age calculations.
@@ -370,9 +385,15 @@ public class LibYearMojo extends AbstractMojo {
 	/**
 	 * Setter for the HTTP timeout for API calls
 	 */
-	protected void setHttpTimeout(long seconds) {
+	protected void setHttpTimeout(int seconds) {
 		MAVEN_API_HTTP_TIMEOUT_SECONDS = seconds;
 	}
+
+	/**
+	 * Setter for the HTTP API fetch retry count
+	 * @param count	the number of retries before giving up
+	 */
+	protected void setFetchRetryCount(int count) { MAVEN_API_HTTP_RETRY_COUNT = count; }
 
 	/**
 	 * Check if the mojo is configured to consider dependencyManagement
@@ -626,15 +647,14 @@ public class LibYearMojo extends AbstractMojo {
 		}
 
 		try {
-			HttpResponse<String> response = fetchReleaseDate(groupId, artifactId, version);
+			Optional<String> response = fetchReleaseDate(groupId, artifactId, version);
 
-			if (response.statusCode() != 200) {
-				getLog().error(String.format("Failed to fetch release date for %s:%s %s", groupId, artifactId, version));
-				getLog().error(response.body());
+			if (response.isEmpty()) {
+				// TODO: Duplicate code
 				return Optional.empty();
 			}
 
-			JSONObject json = new JSONObject(response.body());
+			JSONObject json = new JSONObject(response.get());
 			JSONObject queryResponse = json.getJSONObject("response");
 			if (queryResponse.getLong("numFound") != 0) {
 				long epochTime = queryResponse.getJSONArray("docs").getJSONObject(0).getLong("timestamp");
@@ -650,7 +670,7 @@ public class LibYearMojo extends AbstractMojo {
 				return Optional.empty();
 			}
 		} catch (Exception e) {
-			getLog().error(String.format("Failed to get release date for %s %s: %s", ga, version, e.getMessage()));
+			getLog().error(String.format("Failed to fetch release date for %s %s: %s", ga, version, e.getMessage()));
 			return Optional.empty();
 		}
 	}
@@ -658,16 +678,42 @@ public class LibYearMojo extends AbstractMojo {
 	/**
 	 * Make the API call to fetch the release date
 	 */
-	private static HttpResponse<String> fetchReleaseDate(String groupId, String artifactId, String version) throws IOException, InterruptedException {
+	private Optional<String> fetchReleaseDate(String groupId, String artifactId, String version) throws IOException {
 		URI artifactUri = URI.create(String.format("%s/solrsearch/select?q=g:%s+AND+a:%s+AND+v:%s&wt=json", SEARCH_URI, groupId, artifactId, version));
 
-		HttpRequest request = HttpRequest.newBuilder()
-				.uri(artifactUri)
-				.version(HttpClient.Version.HTTP_2)
-				.timeout(Duration.of(MAVEN_API_HTTP_TIMEOUT_SECONDS, SECONDS))
-				.GET()
+		getLog().debug("Fetching " + artifactUri);
+
+		RequestConfig config = RequestConfig.custom()
+				.setConnectTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
+				.setConnectionRequestTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
+				.setSocketTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
 				.build();
-		return HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
+
+		try (CloseableHttpClient httpClient = HttpClientBuilder.create()
+				.setDefaultRequestConfig(config)
+				.addInterceptorLast((HttpResponseInterceptor) (response, context) -> {
+					// By default Apache HTTP client doesn't retry on 5xx errors
+					if (response.getStatusLine().getStatusCode() >= 500) {
+						throw new IOException(response.getStatusLine().getReasonPhrase());
+					}
+				})
+				.setRetryHandler(new RetryAllExceptionsLoggingHandler(getLog(), MAVEN_API_HTTP_RETRY_COUNT, true))
+				.build()) {
+			final HttpGet httpGet = new HttpGet(artifactUri);
+
+			try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+				if (response.getStatusLine().getStatusCode() != 200) {
+					getLog().error(String.format("Failed to fetch release date for %s:%s %s (%s)", groupId, artifactId, version, response.getStatusLine().getReasonPhrase()));
+					return Optional.empty();
+				}
+
+				String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+				return Optional.of(responseBody);
+			} catch (ConnectTimeoutException | SocketTimeoutException e) {
+				getLog().error(String.format("Failed to fetch release date for %s:%s %s (%s)", groupId, artifactId, version, "request timed out"));
+				return Optional.empty();
+			}
+		}
 	}
 
 	/**
@@ -678,5 +724,28 @@ public class LibYearMojo extends AbstractMojo {
 	 */
 	private boolean isLastProjectInReactor() {
 		return readyProjectsCounter.incrementAndGet() != session.getProjects().size();
+	}
+
+	private static class RetryAllExceptionsLoggingHandler extends DefaultHttpRequestRetryHandler {
+		Log logger;
+
+		/**
+		 * The superclass has a third constructor parameter listing Exception classes to not retry on, this
+		 * class just passes an empty list. It also logs each retry.
+		 *
+		 * @param logger
+		 * @param retryCount
+		 * @param requestSentRetryEnabled
+		 */
+		public RetryAllExceptionsLoggingHandler(Log logger, int retryCount, boolean requestSentRetryEnabled) {
+			super(retryCount, requestSentRetryEnabled, new ArrayList<>());
+			this.logger = logger;
+		}
+
+		@Override
+		public boolean retryRequest(IOException exception, int executionCount, HttpContext context) {
+			logger.debug("Retrying count " + executionCount);
+			return super.retryRequest(exception, executionCount, context);
+		}
 	}
 }
