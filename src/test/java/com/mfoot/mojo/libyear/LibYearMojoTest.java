@@ -33,6 +33,7 @@ import org.mockito.quality.Strictness;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -666,6 +667,59 @@ public class LibYearMojoTest {
 		assertTrue(((InMemoryTestLogger) mojo.getLog()).debugLogs.contains("Could not find artifact for default-group:default-dependency 2.0.0"));
 	}
 
+	@Test
+	public void multipleDependenciesWithUpdatesAreSortedAlphabetically() throws Exception {
+		LibYearMojo mojo = new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {{
+			put("default-dependency", new String[]{"1.0.0", "2.0.0"});
+			put("second-dependency", new String[]{"5.0.0", "6.0.0"});
+		}})
+
+		) {{
+			setProject(new MavenProjectBuilder()
+					.withDependencies(
+						List.of(
+								DependencyBuilder.newBuilder()
+										.withGroupId("default-group")
+										.withArtifactId("second-dependency")
+										.withVersion("5.0.0")
+										.build(),
+								DependencyBuilder.newBuilder()
+									.withGroupId("default-group")
+									.withArtifactId("default-dependency")
+									.withVersion("1.0.0")
+									.build()
+							))
+					.build());
+			allowProcessingAllDependencies(this);
+			setPluginContext(new HashMap<>());
+
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
+
+			setLog(new InMemoryTestLogger());
+		}};
+
+		LocalDateTime now = LocalDateTime.now();
+
+		// Mark version 2.0.0 as a year newer
+		// Don't stub 1.1.0, there's no need to check its version
+		stubResponseFor("default-group", "default-dependency", "1.0.0", now.minusYears(1));
+		stubResponseFor("default-group", "default-dependency", "2.0.0", now);
+		stubResponseFor("default-group", "second-dependency", "5.0.0", now.minusYears(5));
+		stubResponseFor("default-group", "second-dependency", "6.0.0", now.minusYears(3));
+
+		mojo.execute();
+
+		List<String> infoLogs = ((InMemoryTestLogger) mojo.getLog()).infoLogs;
+		String firstLogInvolvingDefaultGroup = infoLogs.stream()
+				.filter(l -> l.contains("default-group"))
+				.findFirst()
+				.get();
+		int indexOfFirstLog = infoLogs.indexOf(firstLogInvolvingDefaultGroup);
+		assertTrue(infoLogs.get(indexOfFirstLog + 1).contains("second-dependency"));
+		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
+	}
+
 	private void allowProcessingAllDependencies(LibYearMojo mojo) throws IllegalAccessException {
 		setVariableValueToObject(mojo, "processPluginDependencies", true);
 		setVariableValueToObject(mojo, "pluginDependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
@@ -678,9 +732,5 @@ public class LibYearMojoTest {
 		setVariableValueToObject(mojo, "dependencyManagementExcludes", emptyList());
 		setVariableValueToObject(mojo, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
 		setVariableValueToObject(mojo, "dependencyExcludes", emptyList());
-	}
-
-	private void configurePluginSettings(LibYearMojo mojo, String settingName, Object value) throws IllegalAccessException {
-		setVariableValueToObject(mojo, settingName, value);
 	}
 }
