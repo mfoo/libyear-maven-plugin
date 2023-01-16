@@ -19,6 +19,7 @@ package com.mfoot.mojo.libyear;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Plugin;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.codehaus.mojo.versions.filtering.WildcardMatcher;
 import org.codehaus.mojo.versions.utils.DependencyBuilder;
 import org.json.JSONArray;
@@ -53,6 +54,7 @@ import static org.codehaus.mojo.versions.utils.MockUtils.mockMavenSession;
 import static org.codehaus.mojo.versions.utils.MockUtils.mockRepositorySystem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -863,6 +865,39 @@ public class LibYearMojoTest {
 		int indexOfFirstLog = infoLogs.indexOf(firstLogInvolvingDefaultGroup);
 		assertTrue(infoLogs.get(indexOfFirstLog + 1).contains("second-dependency"));
 		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
+	}
+
+	@Test
+	public void projectExceedsMaxLibYearsAndShouldFailTheBuild() throws Exception {
+		LibYearMojo mojo = new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {{
+			put("default-dependency", new String[]{"1.0.0", "2.0.0"});
+		}})
+
+		) {{
+			setProject(new MavenProjectBuilder().withDependencies(singletonList(DependencyBuilder.newBuilder().withGroupId("default-group").withArtifactId("default-dependency").withVersion("1.0.0").build())).build());
+			allowProcessingAllDependencies(this);
+
+			setVariableValueToObject(this, "maxLibYears", 0.1f);
+
+			setPluginContext(new HashMap<>());
+
+			setSession(mockMavenSession());
+			setSearchUri("http://localhost:8080");
+
+			setLog(new InMemoryTestLogger());
+		}};
+
+		LocalDateTime now = LocalDateTime.now();
+
+		stubResponseFor("default-group", "default-dependency", "1.0.0", now.minusYears(1));
+		stubResponseFor("default-group", "default-dependency", "2.0.0", now);
+
+		MojoExecutionException ex = assertThrows(MojoExecutionException.class, mojo::execute);
+		assertEquals("Dependencies exceed maximum specified age in libyears", ex.getMessage());
+
+		assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.stream().anyMatch(
+				l -> l.contains("This project exceeds the maximum dependency age of 0.1 libyears"))
+		);
 	}
 
 	private void allowProcessingAllDependencies(LibYearMojo mojo) throws IllegalAccessException {

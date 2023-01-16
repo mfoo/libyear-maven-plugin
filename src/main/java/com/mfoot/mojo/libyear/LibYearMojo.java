@@ -60,8 +60,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -103,6 +101,11 @@ public class LibYearMojo extends AbstractMojo {
 	static final AtomicLong libWeeksOutDated = new AtomicLong();
 
 	/**
+	 * Track the per-project total of how many libyears outdated we are, used for maxLibYears build failures.
+	 */
+	private float projectLibYearsOutdated = 0;
+
+	/**
 	 * The Maven search URI quite often times out or returns HTTP 5xx. This variable controls how many
 	 * times we can retry on failure before skipping this dependency.
 	 */
@@ -141,6 +144,18 @@ public class LibYearMojo extends AbstractMojo {
 
 	@Parameter(defaultValue = "${session}", required = true, readonly = true)
 	private MavenSession session;
+
+	/**
+	 * Whether to fail the build if the total number of libyears for the project exceeds this target.
+	 * <p>
+	 * In a multi-module project, this value applies to individual modules, not the parent(s).
+	 * <p>
+	 * Note: If you are using this in a project's pom.xml then you may accidentally cause issues when e.g. rebuilding
+	 * older branches. Instead, it may make more sense to use this as a command line plugin execution flag in CI or
+	 * in a Maven profile used for building releases.
+	 */
+	@Parameter(property = "maxLibYears", defaultValue = "0.0")
+	private float maxLibYears;
 
 	/**
 	 * Only take these artifacts into consideration.
@@ -515,7 +530,7 @@ public class LibYearMojo extends AbstractMojo {
 	 * @param updates
 	 * @param section
 	 */
-	private void logUpdates(Map<Dependency, ArtifactVersions> updates, String section) {
+	private void logUpdates(Map<Dependency, ArtifactVersions> updates, String section) throws MojoExecutionException {
 		Map<String, Pair<LocalDate, LocalDate>> dependencyVersionUpdates = Maps.newHashMap();
 
 		for (ArtifactVersions versions : updates.values()) {
@@ -565,9 +580,17 @@ public class LibYearMojo extends AbstractMojo {
 			yearsOutdated = logDependencyUpdates(section, dependencyVersionUpdates);
 		}
 
+		projectLibYearsOutdated += yearsOutdated;
+
 		// Total: Show this across the entire project, not just per section
 		if (yearsOutdated != 0f) {
 			getLog().info(String.format("Total years outdated: %.2f", yearsOutdated));
+		}
+
+		if (maxLibYears != 0 && projectLibYearsOutdated >= maxLibYears) {
+			getLog().info("");
+			getLog().error("This project exceeds the maximum dependency age of " + maxLibYears + " libyears.");
+			throw new MojoExecutionException("Dependencies exceed maximum specified age in libyears");
 		}
 	}
 
