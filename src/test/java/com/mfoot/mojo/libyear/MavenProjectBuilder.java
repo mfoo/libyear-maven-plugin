@@ -16,6 +16,8 @@
 
 package com.mfoot.mojo.libyear;
 
+import java.util.Collections;
+import java.util.List;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.DependencyManagement;
@@ -24,65 +26,64 @@ import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginManagement;
 import org.apache.maven.project.MavenProject;
 
-import java.util.Collections;
-import java.util.List;
-
 class MavenProjectBuilder {
 
-	private List<Dependency> dependencyList = Collections.emptyList();
+    private List<Dependency> dependencyList = Collections.emptyList();
 
-	private List<Plugin> pluginList = Collections.emptyList();
+    private List<Plugin> pluginList = Collections.emptyList();
 
-	private List<Dependency> dependencyManagementDependencyList = Collections.emptyList();
+    private List<Dependency> dependencyManagementDependencyList = Collections.emptyList();
 
-	private List<Plugin> pluginManagementPluginList = Collections.emptyList();
+    private List<Plugin> pluginManagementPluginList = Collections.emptyList();
 
-	public MavenProjectBuilder withDependencies(List<Dependency> dependencyList) {
-		this.dependencyList = dependencyList;
-		return this;
-	}
+    public MavenProjectBuilder withDependencies(List<Dependency> dependencyList) {
+        this.dependencyList = dependencyList;
+        return this;
+    }
 
-	public MavenProjectBuilder withPlugins(List<Plugin> pluginList) {
-		this.pluginList = pluginList;
-		return this;
-	}
+    public MavenProjectBuilder withPlugins(List<Plugin> pluginList) {
+        this.pluginList = pluginList;
+        return this;
+    }
 
-	public MavenProjectBuilder withDependencyManagementDependencyList(List<Dependency> dependencyList) {
-		this.dependencyManagementDependencyList = dependencyList;
-		return this;
-	}
+    public MavenProjectBuilder withDependencyManagementDependencyList(List<Dependency> dependencyList) {
+        this.dependencyManagementDependencyList = dependencyList;
+        return this;
+    }
 
-	public MavenProjectBuilder withPluginManagementPluginList(List<Plugin> pluginList) {
-		this.pluginManagementPluginList = pluginList;
-		return this;
-	}
+    public MavenProjectBuilder withPluginManagementPluginList(List<Plugin> pluginList) {
+        this.pluginManagementPluginList = pluginList;
+        return this;
+    }
 
-	public MavenProject build() {
-		Model model = new Model() {{
-			setGroupId("default-group");
-			setArtifactId("default-artifact");
-			setVersion("1.0.0-SNAPSHOT");
+    public MavenProject build() {
+        Model model = new Model() {
+            {
+                setGroupId("default-group");
+                setArtifactId("default-artifact");
+                setVersion("1.0.0-SNAPSHOT");
 
-			setDependencies(dependencyList);
+                setDependencies(dependencyList);
 
-			Build build = new Build();
-			setBuild(build);
+                Build build = new Build();
+                setBuild(build);
 
-			build.setPlugins(pluginList);
+                build.setPlugins(pluginList);
 
-			PluginManagement pluginManagement = new PluginManagement();
-			build.setPluginManagement(pluginManagement);
-			pluginManagement.setPlugins(pluginManagementPluginList);
+                PluginManagement pluginManagement = new PluginManagement();
+                build.setPluginManagement(pluginManagement);
+                pluginManagement.setPlugins(pluginManagementPluginList);
 
-			DependencyManagement dependencyManagement = new DependencyManagement();
-			setDependencyManagement(dependencyManagement);
-			dependencyManagement.setDependencies(dependencyManagementDependencyList);
-		}};
+                DependencyManagement dependencyManagement = new DependencyManagement();
+                setDependencyManagement(dependencyManagement);
+                dependencyManagement.setDependencies(dependencyManagementDependencyList);
+            }
+        };
 
-		MavenProject project = new MavenProject();
-		project.setModel(model);
-		project.setOriginalModel(model);
+        MavenProject project = new MavenProject();
+        project.setModel(model);
+        project.setOriginalModel(model);
 
-		return project;
-	}
+        return project;
+    }
 }
