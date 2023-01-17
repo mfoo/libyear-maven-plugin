@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mfoot.mojo.libyear;
+package com.github.mfoo.libyear;
 
 import static java.util.Collections.emptySet;
 import static org.codehaus.mojo.versions.filtering.DependencyFilter.filterDependencies;
