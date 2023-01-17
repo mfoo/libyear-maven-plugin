@@ -38,6 +38,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -75,8 +76,7 @@ import org.codehaus.plexus.util.StringUtils;
 import org.json.JSONObject;
 
 /** Analyze dependencies and calculate how old they are. */
-// TODO: Test whether or not we can set `threadSafe = true`
-@Mojo(name = "analyze", defaultPhase = LifecyclePhase.VERIFY)
+@Mojo(name = "analyze", defaultPhase = LifecyclePhase.VERIFY, threadSafe = true)
 public class LibYearMojo extends AbstractMojo {
     /** Screen width for formatting the output number of libyears */
     private static final int INFO_PAD_SIZE = 72;
@@ -85,7 +85,7 @@ public class LibYearMojo extends AbstractMojo {
      * Cache to store the release dates of dependencies to reduce the number of API calls to {@link
      * #SEARCH_URI}
      */
-    static final Map<String, Map<String, LocalDate>> dependencyVersionReleaseDates = Maps.newHashMap();
+    static final Map<String, Map<String, LocalDate>> dependencyVersionReleaseDates = new ConcurrentHashMap<>();
 
     /** Wait until reaching the last project before executing sonar when attached to phase */
     // TODO: Investigate setting "aggregator = true" in the @Mojo class annotation -
@@ -654,7 +654,10 @@ public class LibYearMojo extends AbstractMojo {
      */
     private Optional<LocalDate> getReleaseDate(String groupId, String artifactId, String version) {
         String ga = groupId + ":" + artifactId;
-        Map<String, LocalDate> versionReleaseDates = dependencyVersionReleaseDates.getOrDefault(ga, Maps.newHashMap());
+
+        dependencyVersionReleaseDates.putIfAbsent(ga, new ConcurrentHashMap<>());
+        Map<String, LocalDate> versionReleaseDates = dependencyVersionReleaseDates.get(ga);
+
         if (versionReleaseDates.containsKey(version)) {
             return Optional.of(versionReleaseDates.get(version));
         }
@@ -672,20 +675,13 @@ public class LibYearMojo extends AbstractMojo {
                 long epochTime =
                         queryResponse.getJSONArray("docs").getJSONObject(0).getLong("timestamp");
 
-                getLog().debug("Found release time "
-                        + epochTime
-                        + " for "
-                        + groupId
-                        + ":"
-                        + artifactId
-                        + ":"
+                getLog().debug("Found release time " + epochTime + " for " + groupId + ":" + artifactId + ":"
                         + version);
                 LocalDate releaseDate = Instant.ofEpochMilli(epochTime)
                         .atZone(ZoneId.systemDefault())
                         .toLocalDate();
 
-                versionReleaseDates.put(version, releaseDate);
-                dependencyVersionReleaseDates.put(ga, versionReleaseDates);
+                dependencyVersionReleaseDates.get(ga).putIfAbsent(version, releaseDate);
                 return Optional.of(releaseDate);
             } else {
                 getLog().debug("Could not find artifact for " + groupId + ":" + artifactId + " " + version);
