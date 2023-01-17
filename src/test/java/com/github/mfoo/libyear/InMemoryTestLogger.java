@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mfoot.mojo.libyear;
+package com.github.mfoo.libyear;
 
 import java.util.ArrayList;
 import java.util.List;
