@@ -33,6 +33,7 @@
 		<maven.compiler.target>11</maven.compiler.target>
 		<maven.dependencies.version>3.8.7</maven.dependencies.version>
 		<codehaus.versions.dependencies.version>2.14.2</codehaus.versions.dependencies.version>
+		<github.global.server>github</github.global.server>
 	</properties>
 
 	<dependencies>
@@ -207,13 +208,6 @@
 						<id>default-descriptor</id>
 						<phase>process-classes</phase>
 					</execution>
-					<execution>
-						<!-- generate help goal -->
-						<id>help-goal</id>
-						<goals>
-							<goal>helpmojo</goal>
-						</goals>
-					</execution>
 				</executions>
 			</plugin>
 			<plugin>
@@ -288,6 +282,25 @@
 							<goal>check</goal>
 						</goals>
 						<phase>compile</phase>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<!-- Deploy to https://mfoo.github.io/libyear-maven-plugin/ -->
+				<groupId>com.github.github</groupId>
+				<artifactId>site-maven-plugin</artifactId>
+				<version>0.12</version>
+				<configuration>
+					<message>Creating site for ${project.version}</message>
+					<repositoryName>libyear-maven-plugin</repositoryName>
+					<repositoryOwner>mfoo</repositoryOwner>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>site</goal>
+						</goals>
+						<phase>deploy</phase>
 					</execution>
 				</executions>
 			</plugin>
