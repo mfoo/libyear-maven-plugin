@@ -31,7 +31,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,7 +50,7 @@ import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpRequestRetryHandler;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.protocol.HttpContext;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.EntityUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
@@ -59,7 +58,6 @@ import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -94,6 +92,8 @@ public class LibYearMojo extends AbstractMojo {
      * Track the running total of how many libweeks outdated we are. Used in multi-module builds.
      */
     static final AtomicLong libWeeksOutDated = new AtomicLong();
+
+    private final CloseableHttpClient httpClient;
 
     /**
      * The Maven search URI quite often times out or returns HTTP 5xx. This variable controls how
@@ -306,6 +306,30 @@ public class LibYearMojo extends AbstractMojo {
     public LibYearMojo(RepositorySystem repositorySystem, org.eclipse.aether.RepositorySystem aetherRepositorySystem) {
         this.repositorySystem = repositorySystem;
         this.aetherRepositorySystem = aetherRepositorySystem;
+
+        httpClient = setupHTTPClient();
+    }
+
+    private CloseableHttpClient setupHTTPClient() {
+        RequestConfig config = RequestConfig.custom()
+                .setConnectTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
+                .setConnectionRequestTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
+                .setSocketTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
+                .build();
+
+        return HttpClientBuilder.create()
+                .setConnectionManager(new PoolingHttpClientConnectionManager())
+                .setMaxConnPerRoute(20)
+                .setMaxConnTotal(20)
+                .setDefaultRequestConfig(config)
+                .addInterceptorLast((HttpResponseInterceptor) (response, context) -> {
+                    // By default Apache HTTP client doesn't retry on 5xx errors
+                    if (response.getStatusLine().getStatusCode() >= 500) {
+                        throw new IOException(response.getStatusLine().getReasonPhrase());
+                    }
+                })
+                .setRetryHandler(new DefaultHttpRequestRetryHandler(MAVEN_API_HTTP_RETRY_COUNT, true))
+                .build();
     }
 
     /**
@@ -697,24 +721,9 @@ public class LibYearMojo extends AbstractMojo {
 
         getLog().debug("Fetching " + artifactUri);
 
-        RequestConfig config = RequestConfig.custom()
-                .setConnectTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
-                .setConnectionRequestTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
-                .setSocketTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
-                .build();
+        final HttpGet httpGet = new HttpGet(artifactUri);
 
-        try (CloseableHttpClient httpClient = HttpClientBuilder.create()
-                .setDefaultRequestConfig(config)
-                .addInterceptorLast((HttpResponseInterceptor) (response, context) -> {
-                    // By default, Apache HTTP client doesn't retry on 5xx errors
-                    if (response.getStatusLine().getStatusCode() >= 500) {
-                        throw new IOException(response.getStatusLine().getReasonPhrase());
-                    }
-                })
-                .setRetryHandler(new RetryAllExceptionsLoggingHandler(getLog(), MAVEN_API_HTTP_RETRY_COUNT, true))
-                .build()) {
-            final HttpGet httpGet = new HttpGet(artifactUri);
-
+        try {
             try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
                 if (response.getStatusLine().getStatusCode() != 200) {
                     getLog().error(String.format(
@@ -728,12 +737,12 @@ public class LibYearMojo extends AbstractMojo {
 
                 String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
                 return Optional.of(responseBody);
-            } catch (ConnectTimeoutException | SocketTimeoutException e) {
-                getLog().error(String.format(
-                        "Failed to fetch release date for %s:%s %s (%s)",
-                        groupId, artifactId, version, "request timed out"));
-                return Optional.empty();
             }
+        } catch (ConnectTimeoutException | SocketTimeoutException e) {
+            getLog().error(String.format(
+                    "Failed to fetch release date for %s:%s %s (%s)",
+                    groupId, artifactId, version, "request timed out"));
+            return Optional.empty();
         }
     }
 
@@ -745,28 +754,5 @@ public class LibYearMojo extends AbstractMojo {
      */
     private boolean isLastProjectInReactor() {
         return readyProjectsCounter.incrementAndGet() == session.getProjects().size();
-    }
-
-    private static class RetryAllExceptionsLoggingHandler extends DefaultHttpRequestRetryHandler {
-        Log logger;
-
-        /**
-         * The superclass has a third constructor parameter listing Exception classes to not retry
-         * on, this class just passes an empty list. It also logs each retry.
-         *
-         * @param logger
-         * @param retryCount
-         * @param requestSentRetryEnabled
-         */
-        public RetryAllExceptionsLoggingHandler(Log logger, int retryCount, boolean requestSentRetryEnabled) {
-            super(retryCount, requestSentRetryEnabled, new ArrayList<>());
-            this.logger = logger;
-        }
-
-        @Override
-        public boolean retryRequest(IOException exception, int executionCount, HttpContext context) {
-            logger.debug("Retrying count " + executionCount);
-            return super.retryRequest(exception, executionCount, context);
-        }
     }
 }
