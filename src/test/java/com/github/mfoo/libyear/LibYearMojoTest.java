@@ -64,12 +64,8 @@ import org.mockito.quality.Strictness;
 @MockitoSettings(strictness = Strictness.LENIENT)
 @WireMockTest(httpPort = 8080)
 public class LibYearMojoTest {
-
     // TODO: Tests with version numbers being referenced by variables
     // TODO: Test with version ranges
-    // TODO: Cleanup
-    // TODO: Run code formatter via plugin and enforce format
-    // TODO: This file is using spaces, not tabs
 
     /**
      * Test factory method. Generates a Plugin object representing the specified parameters.
