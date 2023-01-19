@@ -76,7 +76,7 @@ import org.json.JSONObject;
 
 /** Analyze dependencies and calculate how old they are. */
 // TODO: Test whether or not we can set `threadSafe = true`
-@Mojo(name = "analyze", defaultPhase = LifecyclePhase.VERIFY)
+@Mojo(name = "analyze", defaultPhase = LifecyclePhase.VERIFY, aggregator = true)
 public class LibYearMojo extends AbstractMojo {
     /** Screen width for formatting the output number of libyears */
     private static final int INFO_PAD_SIZE = 72;
