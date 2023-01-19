@@ -102,7 +102,7 @@ public class LibYearMojo extends AbstractMojo {
     private static int MAVEN_API_HTTP_RETRY_COUNT = 5;
 
     /** HTTP timeout for making calls to {@link #SEARCH_URI} */
-    private static int MAVEN_API_HTTP_TIMEOUT_SECONDS = 2;
+    private static int MAVEN_API_HTTP_TIMEOUT_SECONDS = 5;
 
     /** API endpoint to query dependency release dates for age calculations. */
     // TODO: Consider users requiring HTTP proxies
