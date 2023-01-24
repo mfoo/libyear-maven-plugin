@@ -76,7 +76,7 @@ import org.json.JSONObject;
 
 /** Analyze dependencies and calculate how old they are. */
 // TODO: Test whether or not we can set `threadSafe = true`
-@Mojo(name = "analyze", defaultPhase = LifecyclePhase.VERIFY, aggregator = true)
+@Mojo(name = "analyze", defaultPhase = LifecyclePhase.VERIFY)
 public class LibYearMojo extends AbstractMojo {
     /** Screen width for formatting the output number of libyears */
     private static final int INFO_PAD_SIZE = 72;
@@ -487,8 +487,8 @@ public class LibYearMojo extends AbstractMojo {
             }
 
             if (isLastProjectInReactor() && readyProjectsCounter.get() != 1) {
-                // If there's more than one project in the tree, show the summary
-                getLog().info(String.format("Total years for entire project: %.2f", libWeeksOutDated.get() / 52f));
+                // If there's more than one project in the tree and this is the last one, show the summary
+                getLog().info(String.format("Total years for the entire project: %.2f", libWeeksOutDated.get() / 52f));
             }
         } catch (Exception e) {
             throw new MojoExecutionException(e.getMessage(), e);
