@@ -187,6 +187,44 @@ public class LibYearMojoTest {
     }
 
     @Test
+    public void singleProjectWithDependencyUpdateAvailableDoesntShowEntireProjectLogLine() throws Exception {
+        LibYearMojo mojo =
+                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
+                    {
+                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                    }
+                })) {
+                    {
+                        setProject(new MavenProjectBuilder()
+                                .withDependencies(singletonList(DependencyBuilder.newBuilder()
+                                        .withGroupId("default-group")
+                                        .withArtifactId("default-dependency")
+                                        .withVersion("1.0.0")
+                                        .build()))
+                                .build());
+                        allowProcessingAllDependencies(this);
+                        setPluginContext(new HashMap<>());
+
+                        setSession(mockMavenSession());
+                        setSearchUri("http://localhost:8080");
+
+                        setLog(new InMemoryTestLogger());
+                    }
+                };
+
+        LocalDateTime now = LocalDateTime.now();
+
+        stubResponseFor("default-group", "default-dependency", "1.0.0", now.minusYears(1));
+        stubResponseFor("default-group", "default-dependency", "2.0.0", now);
+
+        mojo.execute();
+
+        assertTrue(((InMemoryTestLogger) mojo.getLog())
+                .infoLogs.stream().noneMatch((l) -> l.contains("for the entire project")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
+    }
+
+    @Test
     public void dependencyUpdateAvailableButDependencyIsExcluded() throws Exception {
         LibYearMojo mojo =
                 new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
