@@ -88,21 +88,12 @@ public class LibYearMojo extends AbstractMojo {
     static final Map<String, Map<String, LocalDate>> dependencyVersionReleaseDates = Maps.newHashMap();
 
     /** Wait until reaching the last project before executing sonar when attached to phase */
-    // TODO: Investigate setting "aggregator = true" in the @Mojo class annotation -
-    // is this
-    // necessary?
     static final AtomicInteger readyProjectsCounter = new AtomicInteger(0);
 
     /**
      * Track the running total of how many libweeks outdated we are. Used in multi-module builds.
      */
     static final AtomicLong libWeeksOutDated = new AtomicLong();
-
-    /**
-     * Track the per-project total of how many libyears outdated we are, used for maxLibYears build
-     * failures.
-     */
-    private float projectLibYearsOutdated = 0;
 
     /**
      * The Maven search URI quite often times out or returns HTTP 5xx. This variable controls how
@@ -425,6 +416,8 @@ public class LibYearMojo extends AbstractMojo {
     public void execute() throws MojoExecutionException {
         Set<Dependency> dependencyManagement = emptySet();
 
+        float thisProjectLibYearsOutdated = 0;
+
         try {
             if (isProcessingDependencyManagement()) {
                 Set<Dependency> dependenciesFromDependencyManagement = extractDependenciesFromDependencyManagement(
@@ -437,7 +430,7 @@ public class LibYearMojo extends AbstractMojo {
                         "Dependency Management",
                         getLog());
 
-                logUpdates(
+                thisProjectLibYearsOutdated += logUpdates(
                         getHelper().lookupDependenciesUpdates(dependencyManagement, false, false),
                         "Dependency Management");
             }
@@ -456,7 +449,8 @@ public class LibYearMojo extends AbstractMojo {
                         "Dependencies",
                         getLog());
 
-                logUpdates(getHelper().lookupDependenciesUpdates(dependencies, false, false), "Dependencies");
+                thisProjectLibYearsOutdated +=
+                        logUpdates(getHelper().lookupDependenciesUpdates(dependencies, false, false), "Dependencies");
             }
             if (isProcessPluginDependenciesInDependencyManagement()) {
                 Set<Dependency> pluginDependenciesFromDepManagement =
@@ -468,7 +462,7 @@ public class LibYearMojo extends AbstractMojo {
                         pluginManagementDependencyExcludes,
                         "Plugin Management Dependencies",
                         getLog());
-                logUpdates(
+                thisProjectLibYearsOutdated += logUpdates(
                         getHelper()
                                 .lookupDependenciesUpdates(filteredPluginDependenciesFromDepManagement, false, false),
                         "pluginManagement of plugins");
@@ -481,14 +475,24 @@ public class LibYearMojo extends AbstractMojo {
                         "Plugin Dependencies",
                         getLog());
 
-                logUpdates(
+                thisProjectLibYearsOutdated += logUpdates(
                         getHelper().lookupDependenciesUpdates(filteredPluginDependencies, false, false),
                         "Plugin Dependencies");
             }
 
+            getLog().info(String.format("This project is %.2f libyears out of date.", thisProjectLibYearsOutdated));
+
+            if (maxLibYears != 0 && thisProjectLibYearsOutdated >= maxLibYears) {
+                getLog().info("");
+                getLog().error("This project exceeds the maximum dependency age of " + maxLibYears + " libyears");
+                throw new MojoExecutionException("Dependencies exceed maximum specified age in libyears");
+            }
+
             if (isLastProjectInReactor() && readyProjectsCounter.get() != 1) {
+                getLog().info("");
                 // If there's more than one project in the tree and this is the last one, show the summary
-                getLog().info(String.format("Total years for the entire project: %.2f", libWeeksOutDated.get() / 52f));
+                getLog().info(String.format(
+                        "The project as a whole is %.2f libyears out of date", libWeeksOutDated.get() / 52f));
             }
         } catch (Exception e) {
             throw new MojoExecutionException(e.getMessage(), e);
@@ -512,7 +516,7 @@ public class LibYearMojo extends AbstractMojo {
      * @param updates
      * @param section
      */
-    private void logUpdates(Map<Dependency, ArtifactVersions> updates, String section) throws MojoExecutionException {
+    private float logUpdates(Map<Dependency, ArtifactVersions> updates, String section) throws MojoExecutionException {
         Map<String, Pair<LocalDate, LocalDate>> dependencyVersionUpdates = Maps.newHashMap();
 
         for (ArtifactVersions versions : updates.values()) {
@@ -559,23 +563,11 @@ public class LibYearMojo extends AbstractMojo {
                     Pair.of(currentVersionReleaseDate.get(), latestVersionReleaseDate.get()));
         }
 
-        float yearsOutdated = 0;
-        if (!dependencyVersionUpdates.isEmpty()) {
-            yearsOutdated = logDependencyUpdates(section, dependencyVersionUpdates);
+        if (dependencyVersionUpdates.isEmpty()) {
+            return 0;
         }
 
-        projectLibYearsOutdated += yearsOutdated;
-
-        // Total: Show this across the entire project, not just per section
-        if (yearsOutdated != 0f) {
-            getLog().info(String.format("Total years outdated: %.2f", yearsOutdated));
-        }
-
-        if (maxLibYears != 0 && projectLibYearsOutdated >= maxLibYears) {
-            getLog().info("");
-            getLog().error("This project exceeds the maximum dependency age of " + maxLibYears + " libyears.");
-            throw new MojoExecutionException("Dependencies exceed maximum specified age in libyears");
-        }
+        return logDependencyUpdates(section, dependencyVersionUpdates);
     }
 
     /**
@@ -599,9 +591,9 @@ public class LibYearMojo extends AbstractMojo {
 
                     // This is a bug in the underlying logic, where the
                     // display-dependency-updates plugin will include
-                    // updates from e.g commons-io:commons-io 2.11.0 ->
+                    // updates from e.g. commons-io:commons-io 2.11.0 ->
                     // 20030203.000550, despite 2.11.0 being ~15 years
-                    // newer. We return here so we don't count a negative
+                    // newer. We return here, so we don't count a negative
                     // libyear count, even though the dependency may still be
                     // outdated. Anybody experiencing this could use the
                     // ignoredVersions setting instead
@@ -713,8 +705,7 @@ public class LibYearMojo extends AbstractMojo {
         try (CloseableHttpClient httpClient = HttpClientBuilder.create()
                 .setDefaultRequestConfig(config)
                 .addInterceptorLast((HttpResponseInterceptor) (response, context) -> {
-                    // By default Apache HTTP client doesn't retry on 5xx
-                    // errors
+                    // By default, Apache HTTP client doesn't retry on 5xx errors
                     if (response.getStatusLine().getStatusCode() >= 500) {
                         throw new IOException(response.getStatusLine().getReasonPhrase());
                     }
