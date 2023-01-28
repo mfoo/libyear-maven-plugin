@@ -480,7 +480,9 @@ public class LibYearMojo extends AbstractMojo {
                         "Plugin Dependencies");
             }
 
-            getLog().info(String.format("This project is %.2f libyears out of date.", thisProjectLibYearsOutdated));
+            if (thisProjectLibYearsOutdated != 0) {
+                getLog().info(String.format("This project is %.2f libyears behind", thisProjectLibYearsOutdated));
+            }
 
             if (maxLibYears != 0 && thisProjectLibYearsOutdated >= maxLibYears) {
                 getLog().info("");
