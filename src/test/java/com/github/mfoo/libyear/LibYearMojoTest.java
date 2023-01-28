@@ -29,7 +29,6 @@ import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static org.apache.maven.plugin.testing.ArtifactStubFactory.setVariableValueToObject;
 import static org.codehaus.mojo.versions.utils.MockUtils.mockAetherRepositorySystem;
-import static org.codehaus.mojo.versions.utils.MockUtils.mockMavenSession;
 import static org.codehaus.mojo.versions.utils.MockUtils.mockRepositorySystem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -43,9 +42,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.maven.execution.MavenSession;
+import org.apache.maven.execution.ProjectDependencyGraph;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.project.MavenProject;
 import org.codehaus.mojo.versions.filtering.WildcardMatcher;
 import org.codehaus.mojo.versions.utils.DependencyBuilder;
 import org.json.JSONArray;
@@ -53,6 +55,7 @@ import org.json.JSONObject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -89,7 +92,6 @@ public class LibYearMojoTest {
         // TODO: Make these private and add a reset method in the mojo
         LibYearMojo.libWeeksOutDated.set(0);
         LibYearMojo.dependencyVersionReleaseDates.clear();
-        LibYearMojo.readyProjectsCounter.set(0);
     }
 
     /**
@@ -105,17 +107,19 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -148,17 +152,18 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency-with-very-very-long-name")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -196,17 +201,19 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -234,13 +241,14 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+                        setProject(project);
                         allowProcessingAllDependencies(this);
 
                         setVariableValueToObject(
@@ -248,7 +256,7 @@ public class LibYearMojoTest {
 
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -273,20 +281,21 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+                        setProject(project);
                         allowProcessingAllDependencies(this);
 
                         setVariableValueToObject(this, "ignoredVersions", Set.of("2.0.0"));
 
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -311,19 +320,20 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setVariableValueToObject(this, "processDependencies", false);
 
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -378,7 +388,7 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
@@ -391,11 +401,12 @@ public class LibYearMojoTest {
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.1.0")
                                         .build()))
-                                .build());
+                                .build();
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -438,7 +449,7 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
@@ -451,7 +462,9 @@ public class LibYearMojoTest {
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.1.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
                         allowProcessingAllDependencies(this);
 
                         setVariableValueToObject(
@@ -459,7 +472,7 @@ public class LibYearMojoTest {
 
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -501,7 +514,7 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
@@ -514,12 +527,14 @@ public class LibYearMojoTest {
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.1.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setVariableValueToObject(this, "processDependencyManagement", false);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -559,7 +574,7 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
@@ -570,11 +585,13 @@ public class LibYearMojoTest {
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.1.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -617,14 +634,16 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withPlugins(singletonList(plugin))
-                                .build());
+                                .build();
+
+                        setProject(project);
 
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -665,19 +684,21 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withPlugins(singletonList(plugin))
                                 .withDependencyManagementDependencyList(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.1.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
 
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -721,16 +742,18 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withPlugins(singletonList(plugin))
                                 .withPluginManagementPluginList(singletonList(managedPlugin))
-                                .build());
+                                .build();
+
+                        setProject(project);
 
                         allowProcessingAllDependencies(this);
 
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -806,17 +829,19 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -846,17 +871,19 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
                         setHttpTimeout(1);
                         setFetchRetryCount(0);
@@ -891,17 +918,19 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setFetchRetryCount(2);
@@ -955,19 +984,21 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
 
                         allowProcessingAllDependencies(this);
 
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -1003,17 +1034,19 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -1049,7 +1082,7 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(List.of(
                                         DependencyBuilder.newBuilder()
                                                 .withGroupId("default-group")
@@ -1061,11 +1094,13 @@ public class LibYearMojoTest {
                                                 .withArtifactId("default-dependency")
                                                 .withVersion("1.0.0")
                                                 .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
                         allowProcessingAllDependencies(this);
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -1102,20 +1137,22 @@ public class LibYearMojoTest {
                     }
                 })) {
                     {
-                        setProject(new MavenProjectBuilder()
+                        MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
                                         .withGroupId("default-group")
                                         .withArtifactId("default-dependency")
                                         .withVersion("1.0.0")
                                         .build()))
-                                .build());
+                                .build();
+
+                        setProject(project);
                         allowProcessingAllDependencies(this);
 
                         setVariableValueToObject(this, "maxLibYears", 0.1f);
 
                         setPluginContext(new HashMap<>());
 
-                        setSession(mockMavenSession());
+                        setSession(mockMavenSession(project));
                         setSearchUri("http://localhost:8080");
 
                         setLog(new InMemoryTestLogger());
@@ -1150,5 +1187,31 @@ public class LibYearMojoTest {
         setVariableValueToObject(mojo, "dependencyManagementExcludes", emptyList());
         setVariableValueToObject(mojo, "dependencyIncludes", singletonList(WildcardMatcher.WILDCARD));
         setVariableValueToObject(mojo, "dependencyExcludes", emptyList());
+    }
+
+    private MavenSession mockMavenSession(MavenProject project) {
+        MavenSession session = org.codehaus.mojo.versions.utils.MockUtils.mockMavenSession();
+        Mockito.when(session.getProjectDependencyGraph()).thenReturn(new ProjectDependencyGraph() {
+            @Override
+            public List<MavenProject> getAllProjects() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public List<MavenProject> getSortedProjects() {
+                return List.of(project);
+            }
+
+            @Override
+            public List<MavenProject> getDownstreamProjects(MavenProject mavenProject, boolean b) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public List<MavenProject> getUpstreamProjects(MavenProject mavenProject, boolean b) {
+                throw new UnsupportedOperationException();
+            }
+        });
+        return session;
     }
 }
