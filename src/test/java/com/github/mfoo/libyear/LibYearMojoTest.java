@@ -41,6 +41,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Plugin;
@@ -172,13 +173,17 @@ public class LibYearMojoTest {
 
         mojo.execute();
 
-        // TODO: Implement wrapping for libyear output for dependencies with long names
-        // then update this
-        // test
-        assertTrue(((InMemoryTestLogger) mojo.getLog())
-                .infoLogs.stream()
-                        .anyMatch((l) -> l.contains("default-group:default-dependency-with-very-very-long-name")
-                                && l.contains("1.00 libyears")));
+        List<String> logs = ((InMemoryTestLogger) mojo.getLog()).infoLogs;
+        Optional<String> logLine = logs.stream()
+                .filter((l) -> l.contains("default-group:default-dependency-with-very-very-long-name"))
+                .findFirst();
+        assertTrue(logLine.isPresent());
+
+        int dependencyFirstLineIndex = logs.indexOf(logLine.get());
+
+        assertFalse(logs.get(dependencyFirstLineIndex).contains("."));
+        assertTrue(logs.get(dependencyFirstLineIndex + 1).startsWith("  ...")
+                && logs.get(dependencyFirstLineIndex + 1).endsWith(("1.00 libyears")));
         assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
     }
 
