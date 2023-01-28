@@ -643,14 +643,7 @@ public class LibYearMojo extends AbstractMojo {
                     long libWeeksOutdated = ChronoUnit.WEEKS.between(currentReleaseDate, latestReleaseDate);
                     float libYearsOutdated = libWeeksOutdated / 52f;
 
-                    String right = String.format(" %.2f libyears", libYearsOutdated);
-                    String left = "  " + dep.getKey() + " ";
-
-                    // TODO Handle when the name is very long
-
-                    String versionWithDots = StringUtils.rightPad(left, INFO_PAD_SIZE - right.length(), ".");
-
-                    getLog().info(versionWithDots + right);
+                    logDependencyAge(dep, libYearsOutdated);
                     yearsOutdated[0] += libYearsOutdated;
                     libWeeksOutDated.getAndAdd(libWeeksOutdated);
                 });
@@ -658,6 +651,28 @@ public class LibYearMojo extends AbstractMojo {
         getLog().info("");
 
         return yearsOutdated[0];
+    }
+
+    /**
+     * Display the output for how many libyears behind the specified dependency is. Wraps at {@link #INFO_PAD_SIZE}.
+     *
+     * Prints output in the form
+     *
+     * @param dep   The dependency
+     * @param libYearsOutdated  How many libyears behind it is
+     */
+    private void logDependencyAge(Map.Entry<String, Pair<LocalDate, LocalDate>> dep, float libYearsOutdated) {
+        String right = String.format(" %.2f libyears", libYearsOutdated);
+        String left = "  " + dep.getKey() + " ";
+
+        if ((left.length() + right.length()) > INFO_PAD_SIZE) {
+            getLog().info(left);
+            String versionWithDots = StringUtils.rightPad("  ", INFO_PAD_SIZE - right.length(), ".");
+            getLog().info(versionWithDots + right);
+        } else {
+            String versionWithDots = StringUtils.rightPad(left, INFO_PAD_SIZE - right.length(), ".");
+            getLog().info(versionWithDots + right);
+        }
     }
 
     /**
@@ -748,7 +763,7 @@ public class LibYearMojo extends AbstractMojo {
 
     /**
      * Calculate if this is the last project in a multi-project pom. This is used to show a total
-     * "libyears outdated" figure for this project and all child projects.
+     * "libyears behind" figure for this project and all child projects.
      *
      * @return Whether this is the last project to be analysed by the plugin
      */
