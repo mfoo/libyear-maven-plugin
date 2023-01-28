@@ -607,7 +607,6 @@ public class LibYearMojo extends AbstractMojo {
 
         float[] yearsOutdated = {0};
 
-        getLog().info("");
         getLog().info("The following dependencies in " + pomSection + " have newer versions:");
         validOutdatedDependencies.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
@@ -743,7 +742,7 @@ public class LibYearMojo extends AbstractMojo {
      * @return Whether this is the last project to be analysed by the plugin
      */
     private boolean isLastProjectInReactor() {
-        return readyProjectsCounter.incrementAndGet() != session.getProjects().size();
+        return readyProjectsCounter.incrementAndGet() == session.getProjects().size();
     }
 
     private static class RetryAllExceptionsLoggingHandler extends DefaultHttpRequestRetryHandler {
