@@ -35,7 +35,7 @@
 	</licenses>
 	<scm>
 		<connection>scm:git:git://github.com/mfoo/libyear-maven-plugin.git</connection>
-		<developerConnection>scm:git:ssh://github.com:mfoo/libyear-maven-plugin.git</developerConnection>
+		<developerConnection>scm:git:git@github.com:mfoo/libyear-maven-plugin.git</developerConnection>
 		<url>https://github.com/mfoo/libyear-maven-plugin/tree/main</url>
 	  <tag>libyear-maven-plugin-0.0.1</tag>
   </scm>
@@ -255,6 +255,30 @@
 					<execution>
 						<goals>
 							<goal>analyze-only</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>3.4.1</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>3.2.1</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>jar</goal>
 						</goals>
 					</execution>
 				</executions>
