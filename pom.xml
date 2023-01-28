@@ -1,11 +1,9 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.github.mfoo</groupId>
 	<artifactId>libyear-maven-plugin</artifactId>
 	<packaging>maven-plugin</packaging>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1</version>
 
 	<name>libyear-maven-plugin Maven Mojo</name>
 	<description>This plugin helps you see how outdated your Maven project dependencies are via the libyear dependency freshness measure.</description>
@@ -39,7 +37,8 @@
 		<connection>scm:git:git://github.com/mfoo/libyear-maven-plugin.git</connection>
 		<developerConnection>scm:git:ssh://github.com:mfoo/libyear-maven-plugin.git</developerConnection>
 		<url>https://github.com/mfoo/libyear-maven-plugin/tree/main</url>
-	</scm>
+	  <tag>libyear-maven-plugin-0.0.1</tag>
+  </scm>
 
 	<prerequisites>
 		<maven>3.6.3</maven>
