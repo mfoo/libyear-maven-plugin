@@ -96,6 +96,47 @@ public class LibYearMojoTest {
 
     /**
      * This is a basic test to ensure that a project with a single dependency correctly shows
+     * nothing when no updates are available.
+     */
+    @Test
+    public void dependencyIsAlreadyOnTheLatestVersion() throws Exception {
+        LibYearMojo mojo =
+                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
+                    {
+                        put("default-dependency", new String[] {"1.0.0"});
+                    }
+                })) {
+                    {
+                        MavenProject project = new MavenProjectBuilder()
+                                .withDependencies(singletonList(DependencyBuilder.newBuilder()
+                                        .withGroupId("default-group")
+                                        .withArtifactId("default-dependency")
+                                        .withVersion("1.0.0")
+                                        .build()))
+                                .build();
+
+                        setProject(project);
+                        allowProcessingAllDependencies(this);
+                        setPluginContext(new HashMap<>());
+
+                        setSession(mockMavenSession(project));
+                        setSearchUri("http://localhost:8080");
+
+                        setLog(new InMemoryTestLogger());
+                    }
+                };
+
+        LocalDateTime now = LocalDateTime.now();
+        stubResponseFor("default-group", "default-dependency", "1.0.0", now.minusYears(1));
+
+        mojo.execute();
+
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).infoLogs.isEmpty());
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
+    }
+
+    /**
+     * This is a basic test to ensure that a project with a single dependency correctly shows
      * available updates.
      */
     @Test
@@ -435,8 +476,6 @@ public class LibYearMojoTest {
      * This test has a project with a dependency with version 1.0.0. Dependency management pins it
      * at 1.1.0, and 2.0.0 is available. We exclude the plugin from considering dependency
      * management, meaning we should show the age between 1.0.0 and 2.0.0.
-     *
-     * @throws Exception
      */
     @Test
     public void

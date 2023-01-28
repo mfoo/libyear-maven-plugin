@@ -33,7 +33,6 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -73,7 +72,7 @@ import org.codehaus.plexus.util.StringUtils;
 import org.json.JSONObject;
 
 /** Analyze dependencies and calculate how old they are. */
-// TODO: Test whether or not we can set `threadSafe = true`
+@SuppressWarnings("unused")
 @Mojo(name = "analyze", defaultPhase = LifecyclePhase.VERIFY)
 public class LibYearMojo extends AbstractMojo {
     /** Screen width for formatting the output number of libyears */
@@ -414,29 +413,9 @@ public class LibYearMojo extends AbstractMojo {
         return processPluginDependenciesInPluginManagement;
     }
 
-    // TODO: This is stolen from DisplayDependencyUpdatesMojo
     private static boolean dependenciesMatch(Dependency dependency, Dependency managedDependency) {
-        if (!managedDependency.getGroupId().equals(dependency.getGroupId())) {
-            return false;
-        }
-
-        if (!managedDependency.getArtifactId().equals(dependency.getArtifactId())) {
-            return false;
-        }
-
-        if (managedDependency.getScope() == null
-                || Objects.equals(managedDependency.getScope(), dependency.getScope())) {
-            return false;
-        }
-
-        if (managedDependency.getClassifier() == null
-                || Objects.equals(managedDependency.getClassifier(), dependency.getClassifier())) {
-            return false;
-        }
-
-        return dependency.getVersion() == null
-                || managedDependency.getVersion() == null
-                || Objects.equals(managedDependency.getVersion(), dependency.getVersion());
+        return managedDependency.getGroupId().equals(dependency.getGroupId())
+                && managedDependency.getArtifactId().equals(dependency.getArtifactId());
     }
 
     /**
@@ -451,9 +430,11 @@ public class LibYearMojo extends AbstractMojo {
 
         try {
             if (isProcessingDependencyManagement()) {
+                // Get all dependencies from <dependencyManagement />
                 Set<Dependency> dependenciesFromDependencyManagement = extractDependenciesFromDependencyManagement(
                         project, processDependencyManagementTransitive, getLog());
 
+                // Handle user settings - filter out anything that's excluded
                 dependencyManagement = filterDependencies(
                         dependenciesFromDependencyManagement,
                         dependencyManagementIncludes,
@@ -461,52 +442,65 @@ public class LibYearMojo extends AbstractMojo {
                         "Dependency Management",
                         getLog());
 
-                thisProjectLibYearsOutdated += logUpdates(
+                // Log anything that's left
+                thisProjectLibYearsOutdated += processDependencyUpdates(
                         getHelper().lookupDependenciesUpdates(dependencyManagement, false, false),
                         "Dependency Management");
             }
             if (isProcessingDependencies()) {
                 Set<Dependency> finalDependencyManagement = dependencyManagement;
 
-                Set<Dependency> dependenciesExcludingOverriden = project.getDependencies().parallelStream()
+                // Get a list of dependencies and versions, using the versions from dependency management if they exist
+                Set<Dependency> dependenciesExcludingOverridden = project.getDependencies().parallelStream()
                         .filter(dep -> finalDependencyManagement.parallelStream()
                                 .noneMatch(depMan -> dependenciesMatch(dep, depMan)))
                         .collect(() -> new TreeSet<>(DependencyComparator.INSTANCE), Set::add, Set::addAll);
 
+                // Handle user settings - filter out anything that's excluded
                 Set<Dependency> dependencies = filterDependencies(
-                        dependenciesExcludingOverriden,
+                        dependenciesExcludingOverridden,
                         dependencyIncludes,
                         dependencyExcludes,
                         "Dependencies",
                         getLog());
 
-                thisProjectLibYearsOutdated +=
-                        logUpdates(getHelper().lookupDependenciesUpdates(dependencies, false, false), "Dependencies");
+                // Log anything that's left
+                thisProjectLibYearsOutdated += processDependencyUpdates(
+                        getHelper().lookupDependenciesUpdates(dependencies, false, false), "Dependencies");
             }
             if (isProcessPluginDependenciesInDependencyManagement()) {
+                // Get all dependencies of plugins from dependencyManagement
                 Set<Dependency> pluginDependenciesFromDepManagement =
                         extractPluginDependenciesFromPluginsInPluginManagement(project);
 
+                // Handle user settings - filter out anything that's excluded
                 Set<Dependency> filteredPluginDependenciesFromDepManagement = filterDependencies(
                         pluginDependenciesFromDepManagement,
                         pluginManagementDependencyIncludes,
                         pluginManagementDependencyExcludes,
                         "Plugin Management Dependencies",
                         getLog());
-                thisProjectLibYearsOutdated += logUpdates(
+
+                // Log anything that's left
+                thisProjectLibYearsOutdated += processDependencyUpdates(
                         getHelper()
                                 .lookupDependenciesUpdates(filteredPluginDependenciesFromDepManagement, false, false),
                         "pluginManagement of plugins");
             }
             if (isProcessingPluginDependencies()) {
+                // Get all dependencies of plugins
+                Set<Dependency> pluginDependencies = extractDependenciesFromPlugins(project);
+
+                // Handle user settings - filter out anything that's excluded
                 Set<Dependency> filteredPluginDependencies = filterDependencies(
-                        extractDependenciesFromPlugins(project),
+                        pluginDependencies,
                         pluginDependencyIncludes,
                         pluginDependencyExcludes,
                         "Plugin Dependencies",
                         getLog());
 
-                thisProjectLibYearsOutdated += logUpdates(
+                // Log anything that's left
+                thisProjectLibYearsOutdated += processDependencyUpdates(
                         getHelper().lookupDependenciesUpdates(filteredPluginDependencies, false, false),
                         "Plugin Dependencies");
             }
@@ -534,6 +528,7 @@ public class LibYearMojo extends AbstractMojo {
     /**
      * Log the total age, most outdated project and the most outdated dependency of the entire project.
      */
+    @SuppressWarnings("OptionalGetWithoutIsPresent")
     private void logProjectSummary() {
         getLog().info("");
         getLog().info(String.format("The project as a whole is %.2f libyears behind", libWeeksOutDated.get() / 52f));
@@ -568,30 +563,17 @@ public class LibYearMojo extends AbstractMojo {
     }
 
     /**
-     * @param updates
-     * @param section
+     * Iterates over the list of updates for the current pom section, logging how far behind the latest version they are.
+     *
+     * @param updates   All of the available updates for this section
+     * @param section   The name of the section (e.g. "Plugin Management")
      */
-    private float logUpdates(Map<Dependency, ArtifactVersions> updates, String section) {
+    private float processDependencyUpdates(Map<Dependency, ArtifactVersions> updates, String section) {
         Map<String, Pair<LocalDate, LocalDate>> dependencyVersionUpdates = Maps.newHashMap();
 
         for (ArtifactVersions versions : updates.values()) {
-            final String current;
-            ArtifactVersion latest;
-            if (versions.isCurrentVersionDefined()) {
-                current = versions.getCurrentVersion().toString();
-                latest = versions.getNewestUpdate(Optional.empty(), false);
-            } else {
-                ArtifactVersion newestVersion =
-                        versions.getNewestVersion(versions.getArtifact().getVersionRange(), false);
-                current = versions.getArtifact().getVersionRange().toString();
-                latest =
-                        newestVersion == null ? null : versions.getNewestUpdate(newestVersion, Optional.empty(), false);
-                if (latest != null
-                        && ArtifactVersions.isVersionInRange(
-                                latest, versions.getArtifact().getVersionRange())) {
-                    latest = null;
-                }
-            }
+            final String current = versions.getCurrentVersion().toString();
+            ArtifactVersion latest = versions.getNewestUpdate(Optional.empty(), false);
 
             if (latest == null) {
                 continue;
@@ -612,7 +594,7 @@ public class LibYearMojo extends AbstractMojo {
                 continue;
             }
 
-            String ga = artifact.getGroupId() + ":" + artifact.getArtifactId();
+            String ga = String.format("%s:%s", artifact.getGroupId(), artifact.getArtifactId());
             dependencyVersionUpdates.put(ga, Pair.of(currentVersionReleaseDate.get(), latestVersionReleaseDate.get()));
         }
 
@@ -664,7 +646,7 @@ public class LibYearMojo extends AbstractMojo {
 
         float[] yearsOutdated = {0};
 
-        getLog().info("The following dependencies in " + pomSection + " have newer versions:");
+        getLog().info(String.format("The following dependencies in %s have newer versions:", pomSection));
         validOutdatedDependencies.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .forEach((dep) -> {
@@ -691,8 +673,14 @@ public class LibYearMojo extends AbstractMojo {
 
     /**
      * Display the output for how many libyears behind the specified dependency is. Wraps at {@link #INFO_PAD_SIZE}.
-     *
+     * <p />
      * Prints output in the form
+     * <p />
+     * <code>
+     *     mygroup:myartifact ................ 1.0 years
+     *     mygroup:myartifactwithlonglonglongname
+     *     ................................... 2.0 years
+     * </code>
      *
      * @param dep   The dependency
      * @param libYearsOutdated  How many libyears behind it is
@@ -721,7 +709,7 @@ public class LibYearMojo extends AbstractMojo {
      * @return The creation date of the artifact
      */
     private Optional<LocalDate> getReleaseDate(String groupId, String artifactId, String version) {
-        String ga = groupId + ":" + artifactId;
+        String ga = String.format("%s:%s", groupId, artifactId);
         Map<String, LocalDate> versionReleaseDates = dependencyVersionReleaseDates.getOrDefault(ga, Maps.newHashMap());
         if (versionReleaseDates.containsKey(version)) {
             return Optional.of(versionReleaseDates.get(version));
@@ -740,14 +728,8 @@ public class LibYearMojo extends AbstractMojo {
                 long epochTime =
                         queryResponse.getJSONArray("docs").getJSONObject(0).getLong("timestamp");
 
-                getLog().debug("Found release time "
-                        + epochTime
-                        + " for "
-                        + groupId
-                        + ":"
-                        + artifactId
-                        + ":"
-                        + version);
+                getLog().debug(String.format("Found release time %d for %s:%s", epochTime, ga, version));
+
                 LocalDate releaseDate = Instant.ofEpochMilli(epochTime)
                         .atZone(ZoneId.systemDefault())
                         .toLocalDate();
@@ -756,7 +738,7 @@ public class LibYearMojo extends AbstractMojo {
                 dependencyVersionReleaseDates.put(ga, versionReleaseDates);
                 return Optional.of(releaseDate);
             } else {
-                getLog().debug("Could not find artifact for " + groupId + ":" + artifactId + " " + version);
+                getLog().debug(String.format("Could not find artifact for %s %s", ga, version));
                 return Optional.empty();
             }
         } catch (Exception e) {
