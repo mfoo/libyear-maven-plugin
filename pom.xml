@@ -35,6 +35,11 @@
 			<distribution>repo</distribution>
 		</license>
 	</licenses>
+	<scm>
+		<connection>scm:git:git://github.com/mfoo/libyear-maven-plugin.git</connection>
+		<developerConnection>scm:git:ssh://github.com:mfoo/libyear-maven-plugin.git</developerConnection>
+		<url>https://github.com/mfoo/libyear-maven-plugin/tree/main</url>
+	</scm>
 
 	<prerequisites>
 		<maven>3.6.3</maven>
