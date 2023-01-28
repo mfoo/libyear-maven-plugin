@@ -37,7 +37,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
@@ -85,15 +85,22 @@ public class LibYearMojo extends AbstractMojo {
      */
     static final Map<String, Map<String, LocalDate>> dependencyVersionReleaseDates = Maps.newHashMap();
 
-    /** Wait until reaching the last project before executing sonar when attached to phase */
-    static final AtomicInteger readyProjectsCounter = new AtomicInteger(0);
-
     /**
      * Track the running total of how many libweeks outdated we are. Used in multi-module builds.
      */
     static final AtomicLong libWeeksOutDated = new AtomicLong();
 
     private final CloseableHttpClient httpClient;
+
+    /**
+     * Track the age of each module in a multi-module project.
+     */
+    static final Map<String, Float> projectAges = new ConcurrentHashMap<>();
+
+    /**
+     * Track the age of the oldest version in use of each dependency
+     */
+    static final Map<String, Float> dependencyAges = new ConcurrentHashMap<>();
 
     /**
      * The Maven search URI quite often times out or returns HTTP 5xx. This variable controls how
@@ -514,15 +521,37 @@ public class LibYearMojo extends AbstractMojo {
                 throw new MojoExecutionException("Dependencies exceed maximum specified age in libyears");
             }
 
-            if (isLastProjectInReactor() && readyProjectsCounter.get() != 1) {
-                getLog().info("");
-                // If there's more than one project in the tree and this is the last one, show the summary
-                getLog().info(String.format(
-                        "The project as a whole is %.2f libyears out of date", libWeeksOutDated.get() / 52f));
+            projectAges.put(project.getName(), thisProjectLibYearsOutdated);
+
+            if (isLastProjectInReactor() && session.getProjects().size() != 1 && libWeeksOutDated.get() != 0) {
+                logProjectSummary();
             }
         } catch (Exception e) {
             throw new MojoExecutionException(e.getMessage(), e);
         }
+    }
+
+    /**
+     * Log the total age, most outdated project and the most outdated dependency of the entire project.
+     */
+    private void logProjectSummary() {
+        getLog().info("");
+        getLog().info(String.format("The project as a whole is %.2f libyears behind", libWeeksOutDated.get() / 52f));
+
+        Map.Entry<String, Float> oldestProject = projectAges.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .get();
+
+        getLog().info(String.format(
+                "The oldest module is %s (%.2f libyears behind)", oldestProject.getKey(), oldestProject.getValue()));
+
+        Map.Entry<String, Float> oldestDependency = dependencyAges.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .get();
+
+        getLog().info(String.format(
+                "The oldest dependency is %s (%.2f libyears behind)",
+                oldestDependency.getKey(), oldestDependency.getValue()));
     }
 
     private VersionsHelper getHelper() throws MojoExecutionException {
@@ -542,7 +571,7 @@ public class LibYearMojo extends AbstractMojo {
      * @param updates
      * @param section
      */
-    private float logUpdates(Map<Dependency, ArtifactVersions> updates, String section) throws MojoExecutionException {
+    private float logUpdates(Map<Dependency, ArtifactVersions> updates, String section) {
         Map<String, Pair<LocalDate, LocalDate>> dependencyVersionUpdates = Maps.newHashMap();
 
         for (ArtifactVersions versions : updates.values()) {
@@ -572,7 +601,6 @@ public class LibYearMojo extends AbstractMojo {
                 continue;
             }
 
-            // TODO: Maven mirrors?
             Artifact /* current */ artifact = versions.getArtifact();
             Optional<LocalDate> latestVersionReleaseDate =
                     getReleaseDate(artifact.getGroupId(), artifact.getArtifactId(), latest.toString());
@@ -584,9 +612,8 @@ public class LibYearMojo extends AbstractMojo {
                 continue;
             }
 
-            dependencyVersionUpdates.put(
-                    artifact.getGroupId() + ":" + artifact.getArtifactId(),
-                    Pair.of(currentVersionReleaseDate.get(), latestVersionReleaseDate.get()));
+            String ga = artifact.getGroupId() + ":" + artifact.getArtifactId();
+            dependencyVersionUpdates.put(ga, Pair.of(currentVersionReleaseDate.get(), latestVersionReleaseDate.get()));
         }
 
         if (dependencyVersionUpdates.isEmpty()) {
@@ -596,8 +623,12 @@ public class LibYearMojo extends AbstractMojo {
         return logDependencyUpdates(section, dependencyVersionUpdates);
     }
 
+    private long getLibWeeksBetween(LocalDate earlierDate, LocalDate laterDate) {
+        return ChronoUnit.WEEKS.between(earlierDate, laterDate);
+    }
+
     /**
-     * Given a set of outdated dependencies, print how many libyears outdated they are to the
+     * Given a set of outdated dependencies, print how many libyears behind they are to the
      * screen.
      *
      * @param pomSection The section of the pom we are analyzing
@@ -640,12 +671,17 @@ public class LibYearMojo extends AbstractMojo {
                     LocalDate currentReleaseDate = dep.getValue().getLeft();
                     LocalDate latestReleaseDate = dep.getValue().getRight();
 
-                    long libWeeksOutdated = ChronoUnit.WEEKS.between(currentReleaseDate, latestReleaseDate);
+                    long libWeeksOutdated = getLibWeeksBetween(currentReleaseDate, latestReleaseDate);
                     float libYearsOutdated = libWeeksOutdated / 52f;
 
                     logDependencyAge(dep, libYearsOutdated);
                     yearsOutdated[0] += libYearsOutdated;
                     libWeeksOutDated.getAndAdd(libWeeksOutdated);
+
+                    if (!dependencyAges.containsKey(dep.getKey())
+                            || dependencyAges.get(dep.getKey()) < libYearsOutdated) {
+                        dependencyAges.put(dep.getKey(), libYearsOutdated);
+                    }
                 });
 
         getLog().info("");
@@ -768,6 +804,9 @@ public class LibYearMojo extends AbstractMojo {
      * @return Whether this is the last project to be analysed by the plugin
      */
     private boolean isLastProjectInReactor() {
-        return readyProjectsCounter.incrementAndGet() == session.getProjects().size();
+        List<MavenProject> projects = session.getProjectDependencyGraph().getSortedProjects();
+        int size = projects.size();
+        MavenProject lastProject = projects.get(size - 1);
+        return lastProject == project;
     }
 }
