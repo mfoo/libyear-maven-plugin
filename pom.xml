@@ -256,20 +256,6 @@
 				</executions>
 			</plugin>
 			<plugin>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>${project.artifactId}</artifactId>
-				<version>${project.version}</version>
-				<executions>
-					<execution>
-						<id>libyear-report</id>
-						<goals>
-							<goal>analyze</goal>
-						</goals>
-						<phase>install</phase>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-site-plugin</artifactId>
 				<version>3.12.1</version>
