@@ -14,7 +14,20 @@
 		<system>GitHub</system>
 		<url>https://github.com/mfoo/libyear-maven-plugin/issues</url>
 	</issueManagement>
+	<distributionManagement>
+		<repository>
+			<id>github</id>
+			<name>GitHub Packages</name>
+			<url>https://maven.pkg.github.com/mfoo/libyear-maven-plugin</url>
+		</repository>
+	</distributionManagement>
 	<inceptionYear>2023</inceptionYear>
+	<developers>
+		<developer>
+			<name>Martin Foot</name>
+			<url>https://github.com/mfoo</url>
+		</developer>
+	</developers>
 	<licenses>
 		<license>
 			<name>Apache License, Version 2.0</name>
