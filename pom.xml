@@ -278,25 +278,26 @@
 					</execution>
 				</executions>
 			</plugin>
-			<plugin>
-				<!-- Deploy to https://mfoo.github.io/libyear-maven-plugin/ -->
-				<groupId>com.github.github</groupId>
-				<artifactId>site-maven-plugin</artifactId>
-				<version>0.12</version>
-				<configuration>
-					<message>Creating site for ${project.version}</message>
-					<repositoryName>libyear-maven-plugin</repositoryName>
-					<repositoryOwner>mfoo</repositoryOwner>
-				</configuration>
-				<executions>
-					<execution>
-						<goals>
-							<goal>site</goal>
-						</goals>
-						<phase>deploy</phase>
-					</execution>
-				</executions>
-			</plugin>
+			<!-- Temporarily disabled while testing creating releases on GitHub -->
+<!--			<plugin>-->
+<!--				&lt;!&ndash; Deploy to https://mfoo.github.io/libyear-maven-plugin/ &ndash;&gt;-->
+<!--				<groupId>com.github.github</groupId>-->
+<!--				<artifactId>site-maven-plugin</artifactId>-->
+<!--				<version>0.12</version>-->
+<!--				<configuration>-->
+<!--					<message>Creating site for ${project.version}</message>-->
+<!--					<repositoryName>libyear-maven-plugin</repositoryName>-->
+<!--					<repositoryOwner>mfoo</repositoryOwner>-->
+<!--				</configuration>-->
+<!--				<executions>-->
+<!--					<execution>-->
+<!--						<goals>-->
+<!--							<goal>site</goal>-->
+<!--						</goals>-->
+<!--						<phase>deploy</phase>-->
+<!--					</execution>-->
+<!--				</executions>-->
+<!--			</plugin>-->
 		</plugins>
 	</build>
 
