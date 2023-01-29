@@ -144,6 +144,8 @@ public class LibYearMojo extends AbstractMojo {
      * <p>Note: If you are using this in a project's pom.xml then you may accidentally cause issues
      * when e.g. rebuilding older branches. Instead, it may make more sense to use this as a command
      * line plugin execution flag in CI or in a Maven profile used for building releases.
+     *
+     * @since 1.0.
      */
     @Parameter(property = "maxLibYears", defaultValue = "0.0")
     private float maxLibYears;
@@ -197,6 +199,8 @@ public class LibYearMojo extends AbstractMojo {
     /**
      * Whether to consider the dependencies pom section. If this is set to false the plugin won't
      * analyze dependencies, but it might analyze e.g. plugins depending on configuration.
+     *
+     * @since 1.0.
      */
     @Parameter(property = "processDependencies", defaultValue = "true")
     protected boolean processDependencies;
