@@ -61,7 +61,7 @@ mvn io.github.mfoo:libyear-maven-plugin:analyze
 </build>
 ```
 
-# Configuration
+## Configuration
 Configuration options can be specified on the command line such as
 `-DdependencyExcludes="io.github.mfoo:*"` or as part of the plugin
 configuration in `pom.xml`.
