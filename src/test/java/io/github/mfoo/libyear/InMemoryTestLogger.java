@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.mfoo.libyear;
+package io.github.mfoo.libyear;
 
 import java.util.ArrayList;
 import java.util.List;

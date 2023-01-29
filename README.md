@@ -7,7 +7,7 @@ This plugin helps you see how outdated your Maven project dependencies are via t
 [libyear](https://libyear.com/) dependency freshness measure:
 
 ```
-[INFO] -------------------< com.github.mfoo:libyear-maven-plugin >-------------------
+[INFO] -------------------< io.github.mfoo:libyear-maven-plugin >-------------------
 [INFO] Building libyear-maven-plugin Maven Mojo 0.0.1-SNAPSHOT
 [INFO] ----------------------------[ maven-plugin ]----------------------------
 [INFO]
@@ -33,7 +33,7 @@ a build inside `pom.xml`.
 ### Command-line
 
 ```shell
-mvn com.github.mfoo:libyear-maven-plugin:0.0.1-SNAPSHOT:analyze
+mvn io.github.mfoo:libyear-maven-plugin:0.0.1-SNAPSHOT:analyze
 ```
 
 ### Plugin execution
@@ -42,7 +42,7 @@ mvn com.github.mfoo:libyear-maven-plugin:0.0.1-SNAPSHOT:analyze
 <build>
   <plugins>
     <plugin>
-      <groupId>com.github.mfoo</groupId>
+      <groupId>io.github.mfoo</groupId>
       <artifactId>libyear-maven-plugin</artifactId>
       <version>0.0.1-SNAPSHOT</version>
       <executions>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.mfoo.libyear;
+package io.github.mfoo.libyear;
 
 import java.util.Collections;
 import java.util.List;
