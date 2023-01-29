@@ -66,10 +66,10 @@ Configuration options can be specified on the command line such as
 `-DdependencyExcludes="io.github.mfoo:*"` or as part of the plugin
 configuration in `pom.xml`.
 
-| Option | Description | Format |
-| ------ | ----------- |--------|
-| `dependencyExcludes` | Ignore certain dependencies | `io.github.mfoo:*,org.apache:*` |
-| `maxLibYears` | Cause the build to fail if dependencies are older than this | `4` |
+| Option               | Description                                                 | Format                          |
+|----------------------|-------------------------------------------------------------|---------------------------------|
+| `dependencyExcludes` | Ignore certain dependencies                                 | `io.github.mfoo:*,org.apache:*` |
+| `maxLibYears`        | Cause the build to fail if dependencies are older than this | `4`                             |
 
 
 A full list of options can be seen as part of the [plugin documentation
