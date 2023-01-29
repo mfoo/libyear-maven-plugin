@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.mfoo.libyear;
+package io.github.mfoo.libyear;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
