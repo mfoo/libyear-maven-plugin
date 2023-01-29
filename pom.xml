@@ -1,17 +1,22 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
 	<groupId>com.github.mfoo</groupId>
 	<artifactId>libyear-maven-plugin</artifactId>
-	<packaging>maven-plugin</packaging>
 	<version>0.0.1</version>
-
 	<name>libyear-maven-plugin Maven Mojo</name>
-	<description>This plugin helps you see how outdated your Maven project dependencies are via the libyear dependency freshness measure.</description>
+	<description>This plugin helps you see how outdated your Maven project
+		dependencies are via the libyear dependency freshness measure.</description>
 	<url>https://github.com/mfoo/libyear-maven-plugin</url>
+	<packaging>maven-plugin</packaging>
+
 	<issueManagement>
 		<system>GitHub</system>
 		<url>https://github.com/mfoo/libyear-maven-plugin/issues</url>
 	</issueManagement>
+
 	<distributionManagement>
 		<repository>
 			<id>github</id>
@@ -19,13 +24,16 @@
 			<url>https://maven.pkg.github.com/mfoo/libyear-maven-plugin</url>
 		</repository>
 	</distributionManagement>
+
 	<inceptionYear>2023</inceptionYear>
+
 	<developers>
 		<developer>
 			<name>Martin Foot</name>
 			<url>https://github.com/mfoo</url>
 		</developer>
 	</developers>
+
 	<licenses>
 		<license>
 			<name>Apache License, Version 2.0</name>
@@ -33,12 +41,12 @@
 			<distribution>repo</distribution>
 		</license>
 	</licenses>
+
 	<scm>
 		<connection>scm:git:git://github.com/mfoo/libyear-maven-plugin.git</connection>
 		<developerConnection>scm:git:git@github.com:mfoo/libyear-maven-plugin.git</developerConnection>
 		<url>https://github.com/mfoo/libyear-maven-plugin/tree/main</url>
-	  <tag>libyear-maven-plugin-0.0.1</tag>
-  </scm>
+	</scm>
 
 	<prerequisites>
 		<maven>3.6.3</maven>
@@ -79,17 +87,6 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.codehaus.mojo.versions</groupId>
-			<artifactId>versions-common</artifactId>
-			<version>${codehaus.versions.dependencies.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.codehaus.mojo.versions</groupId>
-			<artifactId>versions-test</artifactId>
-			<version>${codehaus.versions.dependencies.version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
 			<groupId>org.apache.maven.plugin-tools</groupId>
 			<artifactId>maven-plugin-annotations</artifactId>
 			<version>3.7.1</version>
@@ -100,12 +97,6 @@
 			<artifactId>maven-resolver-api</artifactId>
 			<version>1.9.4</version>
 			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.maven.plugin-testing</groupId>
-			<artifactId>maven-plugin-testing-harness</artifactId>
-			<version>3.3.0</version>
-			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.maven</groupId>
@@ -120,15 +111,66 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.json</groupId>
-			<artifactId>json</artifactId>
-			<version>20220924</version>
+			<groupId>javax.inject</groupId>
+			<artifactId>javax.inject</artifactId>
+			<version>1</version>
+			<scope>provided</scope>
 		</dependency>
+
 		<dependency>
 			<groupId>org.eclipse.aether</groupId>
 			<artifactId>aether-api</artifactId>
 			<version>1.1.0</version>
 			<scope>runtime</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.12.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>31.1-jre</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>4.5.14</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpcore</artifactId>
+			<version>4.4.16</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.plexus</groupId>
+			<artifactId>plexus-utils</artifactId>
+			<version>3.5.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20220924</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.mojo.versions</groupId>
+			<artifactId>versions-common</artifactId>
+			<version>${codehaus.versions.dependencies.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.codehaus.mojo.versions</groupId>
+			<artifactId>versions-test</artifactId>
+			<version>${codehaus.versions.dependencies.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.plugin-testing</groupId>
+			<artifactId>maven-plugin-testing-harness</artifactId>
+			<version>3.3.0</version>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
@@ -155,47 +197,14 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>javax.inject</groupId>
-			<artifactId>javax.inject</artifactId>
-			<version>1</version>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-			<version>3.12.0</version>
-		</dependency>
-		<dependency>
 			<groupId>com.github.tomakehurst</groupId>
 			<artifactId>wiremock-jre8</artifactId>
 			<version>2.35.0</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
-			<version>31.1-jre</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.httpcomponents</groupId>
-			<artifactId>httpclient</artifactId>
-			<version>4.5.14</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.httpcomponents</groupId>
-			<artifactId>httpcore</artifactId>
-			<version>4.4.16</version>
-		</dependency>
-		<dependency>
-			<groupId>org.codehaus.plexus</groupId>
-			<artifactId>plexus-utils</artifactId>
-			<version>3.5.0</version>
-		</dependency>
-		<dependency>
-			<!--
-				Logging for this plugin uses SLF4J, but we don't want to force a logger implementation on projects using
-				the plugin, so ensure this is test-scoped.
-			-->
+			<!-- Logging for this plugin uses SLF4J, but we don't want to force a 
+				logger implementation on projects using the plugin, so ensure this is test-scoped. -->
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
 			<version>2.0.6</version>
@@ -296,6 +305,16 @@
 					<java>
 						<palantirJavaFormat />
 					</java>
+					<formats>
+						<format>
+							<includes>
+								<include>**/pom.xml</include>
+							</includes>
+							<eclipseWtp>
+								<type>XML</type>
+							</eclipseWtp>
+						</format>
+					</formats>
 				</configuration>
 				<executions>
 					<execution>
@@ -306,26 +325,6 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- Temporarily disabled while testing creating releases on GitHub -->
-<!--			<plugin>-->
-<!--				&lt;!&ndash; Deploy to https://mfoo.github.io/libyear-maven-plugin/ &ndash;&gt;-->
-<!--				<groupId>com.github.github</groupId>-->
-<!--				<artifactId>site-maven-plugin</artifactId>-->
-<!--				<version>0.12</version>-->
-<!--				<configuration>-->
-<!--					<message>Creating site for ${project.version}</message>-->
-<!--					<repositoryName>libyear-maven-plugin</repositoryName>-->
-<!--					<repositoryOwner>mfoo</repositoryOwner>-->
-<!--				</configuration>-->
-<!--				<executions>-->
-<!--					<execution>-->
-<!--						<goals>-->
-<!--							<goal>site</goal>-->
-<!--						</goals>-->
-<!--						<phase>deploy</phase>-->
-<!--					</execution>-->
-<!--				</executions>-->
-<!--			</plugin>-->
 		</plugins>
 	</build>
 
