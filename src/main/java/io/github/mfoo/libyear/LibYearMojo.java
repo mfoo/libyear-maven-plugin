@@ -528,25 +528,17 @@ public class LibYearMojo extends AbstractMojo {
     /**
      * Log the total age, most outdated project and the most outdated dependency of the entire project.
      */
-    @SuppressWarnings("OptionalGetWithoutIsPresent")
     private void logProjectSummary() {
         getLog().info("");
         getLog().info(String.format("The project as a whole is %.2f libyears behind", libWeeksOutDated.get() / 52f));
 
-        Map.Entry<String, Float> oldestProject = projectAges.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .get();
+        projectAges.entrySet().stream().max(Map.Entry.comparingByValue()).ifPresent(module -> getLog().info(
+                        String.format(
+                                "The oldest module is %s (%.2f libyears behind)", module.getKey(), module.getValue())));
 
-        getLog().info(String.format(
-                "The oldest module is %s (%.2f libyears behind)", oldestProject.getKey(), oldestProject.getValue()));
-
-        Map.Entry<String, Float> oldestDependency = dependencyAges.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .get();
-
-        getLog().info(String.format(
-                "The oldest dependency is %s (%.2f libyears behind)",
-                oldestDependency.getKey(), oldestDependency.getValue()));
+        dependencyAges.entrySet().stream().max(Map.Entry.comparingByValue()).ifPresent(dep -> getLog().info(
+                        String.format(
+                                "The oldest dependency is %s (%.2f libyears behind)", dep.getKey(), dep.getValue())));
     }
 
     private VersionsHelper getHelper() throws MojoExecutionException {
