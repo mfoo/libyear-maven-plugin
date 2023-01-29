@@ -47,7 +47,7 @@ mvn io.github.mfoo:libyear-maven-plugin:analyze
     <plugin>
       <groupId>io.github.mfoo</groupId>
       <artifactId>libyear-maven-plugin</artifactId>
-      <version>0.0.1-SNAPSHOT</version>
+      <version>1.0.0</version>
       <executions>
         <execution>
           <id>libyear-analysis</id>
