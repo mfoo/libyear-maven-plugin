@@ -485,35 +485,9 @@ public class LibYearMojo extends AbstractMojo {
             }
 
             projectAges.put(project.getName(), thisProjectLibYearsOutdated);
-
-            /*
-            TODO: Re-enable this. Currently it doesn't work without being an aggregator project since the plugin
-            is re-created with each invocation. Sharing via static variables doesn't seem to work - I might have
-            to try storing a database file in target/. The effect of this is that the summary currently only shows
-            stats from the latest module.
-            */
-            // if (isLastProjectInReactor() && session.getProjects().size() != 1 && libWeeksOutDated.get() != 0) {
-            //     logProjectSummary();
-            // }
         } catch (Exception e) {
             throw new MojoExecutionException(e.getMessage(), e);
         }
-    }
-
-    /**
-     * Log the total age, most outdated project and the most outdated dependency of the entire project.
-     */
-    private void logProjectSummary() {
-        getLog().info("");
-        getLog().info(String.format("The project as a whole is %.2f libyears behind", libWeeksOutDated.get() / 52f));
-
-        projectAges.entrySet().stream().max(Map.Entry.comparingByValue()).ifPresent(module -> getLog().info(
-                        String.format(
-                                "The oldest module is %s (%.2f libyears behind)", module.getKey(), module.getValue())));
-
-        dependencyAges.entrySet().stream().max(Map.Entry.comparingByValue()).ifPresent(dep -> getLog().info(
-                        String.format(
-                                "The oldest dependency is %s (%.2f libyears behind)", dep.getKey(), dep.getValue())));
     }
 
     private VersionsHelper getHelper() throws MojoExecutionException {
@@ -572,10 +546,6 @@ public class LibYearMojo extends AbstractMojo {
         return logDependencyUpdates(section, dependencyVersionUpdates);
     }
 
-    private long getLibWeeksBetween(LocalDate earlierDate, LocalDate laterDate) {
-        return ChronoUnit.WEEKS.between(earlierDate, laterDate);
-    }
-
     /**
      * Given a set of outdated dependencies, print how many libyears behind they are to the
      * screen.
@@ -620,7 +590,7 @@ public class LibYearMojo extends AbstractMojo {
                     LocalDate currentReleaseDate = dep.getValue().getLeft();
                     LocalDate latestReleaseDate = dep.getValue().getRight();
 
-                    long libWeeksOutdated = getLibWeeksBetween(currentReleaseDate, latestReleaseDate);
+                    long libWeeksOutdated = ChronoUnit.WEEKS.between(currentReleaseDate, latestReleaseDate);
                     float libYearsOutdated = libWeeksOutdated / 52f;
 
                     logDependencyAge(dep, libYearsOutdated);
@@ -744,18 +714,5 @@ public class LibYearMojo extends AbstractMojo {
                     groupId, artifactId, version, "request timed out"));
             return Optional.empty();
         }
-    }
-
-    /**
-     * Calculate if this is the last project in a multi-module pom. This is used to show a total
-     * "libyears behind" figure for this project and all child projects.
-     *
-     * @return Whether this is the last project to be analysed by the plugin
-     */
-    private boolean isLastProjectInReactor() {
-        List<MavenProject> projects = session.getProjectDependencyGraph().getSortedProjects();
-        int size = projects.size();
-        MavenProject lastProject = projects.get(size - 1);
-        return lastProject == project;
     }
 }
