@@ -192,7 +192,7 @@ public class LibYearMojo extends AbstractMojo {
      * @since 1.0.
      */
     @Parameter(property = "processDependencyManagement", defaultValue = "true")
-    private final boolean processDependencyManagement = true;
+    private boolean processDependencyManagement = true;
 
     /**
      * Whether to consider the dependencies pom section. If this is set to false the plugin won't
@@ -375,44 +375,6 @@ public class LibYearMojo extends AbstractMojo {
         MAVEN_API_HTTP_RETRY_COUNT = count;
     }
 
-    /**
-     * Check if the mojo is configured to consider dependencyManagement
-     *
-     * @return whether the mojo is configured to consider dependencyManagement
-     */
-    public boolean isProcessingDependencyManagement() {
-        return processDependencyManagement;
-    }
-
-    /**
-     * Check if the mojo is configured to consider dependencies
-     *
-     * @return whether the mojo is configured to consider dependencies
-     */
-    public boolean isProcessingDependencies() {
-        return processDependencies;
-    }
-
-    /**
-     * Check if the mojo is configured to consider dependencies of plugins
-     *
-     * @return whether the mojo is configured to consider plugin dependencies
-     */
-    public boolean isProcessingPluginDependencies() {
-        return processPluginDependencies;
-    }
-
-    /**
-     * Check if the mojo is configured to consider dependencies of plugins that are overridden in
-     * dependencyManagement
-     *
-     * @return whether the mojo is configured to consider plugin dependencies that are overridden in
-     *     dependencyManagement
-     */
-    public boolean isProcessPluginDependenciesInDependencyManagement() {
-        return processPluginDependenciesInPluginManagement;
-    }
-
     private static boolean dependenciesMatch(Dependency dependency, Dependency managedDependency) {
         return managedDependency.getGroupId().equals(dependency.getGroupId())
                 && managedDependency.getArtifactId().equals(dependency.getArtifactId());
@@ -429,7 +391,7 @@ public class LibYearMojo extends AbstractMojo {
         float thisProjectLibYearsOutdated = 0;
 
         try {
-            if (isProcessingDependencyManagement()) {
+            if (processDependencyManagement) {
                 // Get all dependencies from <dependencyManagement />
                 Set<Dependency> dependenciesFromDependencyManagement = extractDependenciesFromDependencyManagement(
                         project, processDependencyManagementTransitive, getLog());
@@ -447,7 +409,8 @@ public class LibYearMojo extends AbstractMojo {
                         getHelper().lookupDependenciesUpdates(dependencyManagement, false, false),
                         "Dependency Management");
             }
-            if (isProcessingDependencies()) {
+
+            if (processDependencies) {
                 Set<Dependency> finalDependencyManagement = dependencyManagement;
 
                 // Get a list of dependencies and versions, using the versions from dependency management if they exist
@@ -468,7 +431,8 @@ public class LibYearMojo extends AbstractMojo {
                 thisProjectLibYearsOutdated += processDependencyUpdates(
                         getHelper().lookupDependenciesUpdates(dependencies, false, false), "Dependencies");
             }
-            if (isProcessPluginDependenciesInDependencyManagement()) {
+
+            if (processPluginDependenciesInPluginManagement) {
                 // Get all dependencies of plugins from dependencyManagement
                 Set<Dependency> pluginDependenciesFromDepManagement =
                         extractPluginDependenciesFromPluginsInPluginManagement(project);
@@ -487,7 +451,8 @@ public class LibYearMojo extends AbstractMojo {
                                 .lookupDependenciesUpdates(filteredPluginDependenciesFromDepManagement, false, false),
                         "pluginManagement of plugins");
             }
-            if (isProcessingPluginDependencies()) {
+
+            if (processPluginDependencies) {
                 // Get all dependencies of plugins
                 Set<Dependency> pluginDependencies = extractDependenciesFromPlugins(project);
 
@@ -517,9 +482,15 @@ public class LibYearMojo extends AbstractMojo {
 
             projectAges.put(project.getName(), thisProjectLibYearsOutdated);
 
-            if (isLastProjectInReactor() && session.getProjects().size() != 1 && libWeeksOutDated.get() != 0) {
-                logProjectSummary();
-            }
+            /*
+            TODO: Re-enable this. Currently it doesn't work without being an aggregator project since the plugin
+            is re-created with each invocation. Sharing via static variables doesn't seem to work - I might have
+            to try storing a database file in target/. The effect of this is that the summary currently only shows
+            stats from the latest module.
+            */
+            // if (isLastProjectInReactor() && session.getProjects().size() != 1 && libWeeksOutDated.get() != 0) {
+            //     logProjectSummary();
+            // }
         } catch (Exception e) {
             throw new MojoExecutionException(e.getMessage(), e);
         }
