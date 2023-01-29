@@ -59,6 +59,10 @@
 		<maven.dependencies.version>3.8.7</maven.dependencies.version>
 		<codehaus.versions.dependencies.version>2.14.2</codehaus.versions.dependencies.version>
 		<github.global.server>github</github.global.server>
+
+		<!-- For https://sonarcloud.io/project/overview?id=mfoo_libyear-maven-plugin -->
+		<sonar.organization>mfoo</sonar.organization>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 	</properties>
 
 	<dependencies>
