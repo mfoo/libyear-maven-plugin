@@ -506,12 +506,12 @@ public class LibYearMojo extends AbstractMojo {
             }
 
             if (thisProjectLibYearsOutdated != 0) {
-                getLog().info(String.format("This project is %.2f libyears behind", thisProjectLibYearsOutdated));
+                getLog().info(String.format("This module is %.2f libyears behind", thisProjectLibYearsOutdated));
             }
 
             if (maxLibYears != 0 && thisProjectLibYearsOutdated >= maxLibYears) {
                 getLog().info("");
-                getLog().error("This project exceeds the maximum dependency age of " + maxLibYears + " libyears");
+                getLog().error("This module exceeds the maximum dependency age of " + maxLibYears + " libyears");
                 throw new MojoExecutionException("Dependencies exceed maximum specified age in libyears");
             }
 
@@ -772,7 +772,7 @@ public class LibYearMojo extends AbstractMojo {
     }
 
     /**
-     * Calculate if this is the last project in a multi-project pom. This is used to show a total
+     * Calculate if this is the last project in a multi-module pom. This is used to show a total
      * "libyears behind" figure for this project and all child projects.
      *
      * @return Whether this is the last project to be analysed by the plugin

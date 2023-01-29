@@ -5,23 +5,24 @@
 
 # libyear-maven-plugin
 
-This plugin helps you see how outdated your Maven project dependencies are via the
-[libyear](https://libyear.com/) dependency freshness measure:
+This Maven plugin implements the [libyear](https://libyear.com/) dependency
+freshness measure. It can be executed standalone or included as part of your
+build.
 
+When executed, you'll see an output like this for each of your modules:
 ```
-[INFO] -------------------< io.github.mfoo:libyear-maven-plugin >-------------------
-[INFO] Building libyear-maven-plugin Maven Mojo 0.0.1-SNAPSHOT
-[INFO] ----------------------------[ maven-plugin ]----------------------------
-[INFO]
-[INFO] --- libyear-maven-plugin:0.0.1-SNAPSHOT:analyze (default-cli) @ libyear-maven-plugin ---
-[INFO]
 [INFO] The following dependencies in Dependencies have newer versions:
-[INFO]   org.apache.httpcomponents:httpclient ................... 2.15 libyears
-[INFO]   org.apache.httpcomponents:httpcore ..................... 0.98 libyears
-[INFO]   org.apache.maven:maven-settings ........................ 0.52 libyears
-[INFO]   org.junit.jupiter:junit-jupiter-engine ................. 0.31 libyears
-[INFO]
-[INFO] Total years outdated: 3.96
+[INFO]   io.quarkus:quarkus-arc ................................. 0.27 libyears
+[INFO]   io.quarkus:quarkus-junit5 .............................. 0.27 libyears
+[INFO]   io.quarkus:quarkus-junit5-mockito ...................... 0.27 libyears
+[INFO]   io.quarkus:quarkus-rest-client ......................... 0.27 libyears
+[INFO]   io.quarkus:quarkus-resteasy ............................ 0.27 libyears
+[INFO]   io.quarkus:quarkus-resteasy-jackson .................... 0.27 libyears
+[INFO]   io.rest-assured:rest-assured ........................... 0.77 libyears
+[INFO]   org.mockito:mockito-all ................................ 0.00 libyears
+[INFO]   org.mockito:mockito-core ............................... 0.35 libyears
+[INFO] 
+[INFO] This module is 2.73 libyears behind
 ```
 
 The plugin requires JDK 11+. It is heavily based on the [MojoHaus Versions Maven Plugin](https://www.mojohaus.org/versions/versions-maven-plugin/index.html).
@@ -32,13 +33,13 @@ The plugin provides a single goal, `analyze`. This can be executed
 directly via the command-line with Maven, or it can be incorporated as part of
 a build inside `pom.xml`.
 
-### Command-line
+### Standalone
 
 ```shell
-mvn io.github.mfoo:libyear-maven-plugin:0.0.1-SNAPSHOT:analyze
+mvn io.github.mfoo:libyear-maven-plugin:analyze
 ```
 
-### Plugin execution
+### As part of a build
 
 ```xml
 <build>
@@ -59,3 +60,11 @@ mvn io.github.mfoo:libyear-maven-plugin:0.0.1-SNAPSHOT:analyze
   </plugins>
 </build>
 ```
+
+# Configuration
+Configuration options can be specified on the command line such as
+`-DdependencyExcludes="io.github.mfoo:*"` or as part of the plugin
+configuration in `pom.xml`.
+
+Available options can be seen as part of the [plugin documentation
+site](https://mfoo.github.io/libyear-maven-plugin/analyze-mojo.html).
