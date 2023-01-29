@@ -1,5 +1,7 @@
-![GitHub Action build status badge](https://github.com/mfoo/libyear-maven-plugin/actions/workflows/maven-tests.yml/badge.svg)
 [![Apache License, Version 2.0, January 2004](https://img.shields.io/github/license/mojohaus/versions-maven-plugin.svg?label=License)](http://www.apache.org/licenses/)
+![GitHub Action build status badge](https://github.com/mfoo/libyear-maven-plugin/actions/workflows/maven-tests.yml/badge.svg)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=mfoo_libyear-maven-plugin&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=mfoo_libyear-maven-plugin)
+[![Known Vulnerabilities](https://snyk.io/test/github/mfoo/libyear-maven-plugin/badge.svg)](https://snyk.io/test/github/mfoo/libyear-maven-plugin)
 
 # libyear-maven-plugin
 
