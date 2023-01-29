@@ -1,1 +1,1 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"com.mfoot.mojo.libyear","l":"LibYearMojoTest"}]
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"io.github.mfoo.libyear","l":"LibYearMojoTest"}]

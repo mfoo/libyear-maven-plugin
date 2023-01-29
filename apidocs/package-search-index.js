@@ -1,1 +1,1 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"com.mfoot.libyear_maven_plugin"},{"l":"com.mfoot.mojo.libyear"}]
+packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"io.github.mfoo.libyear"}]

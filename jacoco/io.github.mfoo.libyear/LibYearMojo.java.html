@@ -1,0 +1,762 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LibYearMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">libyear-maven-plugin Maven Mojo</a> &gt; <a href="index.source.html" class="el_package">io.github.mfoo.libyear</a> &gt; <span class="el_source">LibYearMojo.java</span></div><h1>LibYearMojo.java</h1><pre class="source lang-java linenums">/*
+ * Copyright 2023 Martin Foot
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.github.mfoo.libyear;
+
+import static java.util.Collections.emptySet;
+import static org.codehaus.mojo.versions.filtering.DependencyFilter.filterDependencies;
+import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractDependenciesFromDependencyManagement;
+import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractDependenciesFromPlugins;
+import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractPluginDependenciesFromPluginsInPluginManagement;
+
+import com.google.common.collect.Maps;
+import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.http.HttpResponseInterceptor;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.conn.ConnectTimeoutException;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.DefaultHttpRequestRetryHandler;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.util.EntityUtils;
+import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.versioning.ArtifactVersion;
+import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Dependency;
+import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.project.MavenProject;
+import org.apache.maven.repository.RepositorySystem;
+import org.apache.maven.settings.Settings;
+import org.codehaus.mojo.versions.api.ArtifactVersions;
+import org.codehaus.mojo.versions.api.DefaultVersionsHelper;
+import org.codehaus.mojo.versions.api.VersionsHelper;
+import org.codehaus.mojo.versions.filtering.WildcardMatcher;
+import org.codehaus.mojo.versions.utils.DependencyComparator;
+import org.codehaus.plexus.util.StringUtils;
+import org.json.JSONObject;
+
+/** Analyze dependencies and calculate how old they are. */
+@SuppressWarnings(&quot;unused&quot;)
+@Mojo(name = &quot;analyze&quot;, defaultPhase = LifecyclePhase.VERIFY)
+public class LibYearMojo extends AbstractMojo {
+    /** Screen width for formatting the output number of libyears */
+    private static final int INFO_PAD_SIZE = 72;
+
+    /**
+     * Cache to store the release dates of dependencies to reduce the number of API calls to {@link
+     * #SEARCH_URI}
+     */
+<span class="fc" id="L85">    static final Map&lt;String, Map&lt;String, LocalDate&gt;&gt; dependencyVersionReleaseDates = Maps.newHashMap();</span>
+
+    /**
+     * Track the running total of how many libweeks outdated we are. Used in multi-module builds.
+     */
+<span class="fc" id="L90">    static final AtomicLong libWeeksOutDated = new AtomicLong();</span>
+
+    private final CloseableHttpClient httpClient;
+
+    /**
+     * Track the age of each module in a multi-module project.
+     */
+<span class="fc" id="L97">    static final Map&lt;String, Float&gt; projectAges = new ConcurrentHashMap&lt;&gt;();</span>
+
+    /**
+     * Track the age of the oldest version in use of each dependency
+     */
+<span class="fc" id="L102">    static final Map&lt;String, Float&gt; dependencyAges = new ConcurrentHashMap&lt;&gt;();</span>
+
+    /**
+     * The Maven search URI quite often times out or returns HTTP 5xx. This variable controls how
+     * many times we can retry on failure before skipping this dependency.
+     */
+<span class="fc" id="L108">    private static int MAVEN_API_HTTP_RETRY_COUNT = 5;</span>
+
+    /** HTTP timeout for making calls to {@link #SEARCH_URI} */
+<span class="fc" id="L111">    private static int MAVEN_API_HTTP_TIMEOUT_SECONDS = 5;</span>
+
+    /** API endpoint to query dependency release dates for age calculations. */
+    // TODO: Consider users requiring HTTP proxies
+<span class="fc" id="L115">    private static String SEARCH_URI = &quot;https://search.maven.org&quot;;</span>
+
+    private final RepositorySystem repositorySystem;
+    private final org.eclipse.aether.RepositorySystem aetherRepositorySystem;
+    private VersionsHelper helper;
+
+    /**
+     * The Maven Project that the plugin is being executed on. Used for accessing e.g. the list of
+     * dependencies.
+     */
+    @Parameter(defaultValue = &quot;${project}&quot;, required = true, readonly = true)
+    private MavenProject project;
+
+    /** The Maven Settings that are being used, e.g. ~/.m2/settings.xml. */
+    @Parameter(defaultValue = &quot;${settings}&quot;, readonly = true)
+    private Settings settings;
+
+    @Parameter(property = &quot;maven.version.ignore&quot;, readonly = true)
+    protected Set&lt;String&gt; ignoredVersions;
+
+    @Parameter(defaultValue = &quot;${session}&quot;, required = true, readonly = true)
+    private MavenSession session;
+
+    /**
+     * Whether to fail the build if the total number of libyears for the project exceeds this
+     * target.
+     *
+     * &lt;p&gt;In a multi-module project, this value applies to individual modules, not the parent(s).
+     *
+     * &lt;p&gt;Note: If you are using this in a project's pom.xml then you may accidentally cause issues
+     * when e.g. rebuilding older branches. Instead, it may make more sense to use this as a command
+     * line plugin execution flag in CI or in a Maven profile used for building releases.
+     *
+     * @since 1.0.
+     */
+    @Parameter(property = &quot;maxLibYears&quot;, defaultValue = &quot;0.0&quot;)
+    private float maxLibYears;
+
+    /**
+     * Only take these artifacts into consideration.
+     *
+     * &lt;p&gt;Comma-separated list of extended GAV patterns.
+     *
+     * &lt;p&gt;Extended GAV: groupId:artifactId:version:type:classifier:scope
+     *
+     * &lt;p&gt;The wildcard &quot;*&quot; can be used as the only, first, last or both characters in each token.
+     * The version token does support version ranges.
+     *
+     * &lt;p&gt;Example: {@code &quot;mygroup:artifact:*,*:*:*:*:*:compile&quot;}
+     *
+     * @since 1.0.0
+     */
+    @Parameter(property = &quot;pluginManagementDependencyIncludes&quot;, defaultValue = WildcardMatcher.WILDCARD)
+    private List&lt;String&gt; pluginManagementDependencyIncludes;
+
+    /**
+     * Exclude these artifacts into consideration:&lt;br&gt;
+     * Comma-separated list of {@code groupId:[artifactId[:version]]} patterns
+     *
+     * &lt;p&gt;The wildcard &quot;*&quot; can be used as the only, first, last or both characters in each token.
+     * The version token does support version ranges.
+     *
+     * &lt;p&gt;Example: {@code &quot;mygroup:artifact:*,othergroup:*,anothergroup&quot;}
+     *
+     * @since 1.0.0
+     */
+    @Parameter(property = &quot;pluginManagementDependencyExcludes&quot;)
+    private List&lt;String&gt; pluginManagementDependencyExcludes;
+
+    // TODO: Add test coverage for this before exposing it as an option
+    // @Parameter(property = &quot;processDependencyManagementTransitive&quot;, defaultValue =
+    // &quot;false&quot;)
+    // private boolean processDependencyManagementTransitive;
+<span class="fc" id="L188">    private final boolean processDependencyManagementTransitive = false;</span>
+
+    /**
+     * Whether to consider the dependencyManagement pom section. If this is set to false,
+     * dependencyManagement is ignored.
+     *
+     * @since 1.0.
+     */
+<span class="fc" id="L196">    @Parameter(property = &quot;processDependencyManagement&quot;, defaultValue = &quot;true&quot;)</span>
+    private boolean processDependencyManagement = true;
+
+    /**
+     * Whether to consider the dependencies pom section. If this is set to false the plugin won't
+     * analyze dependencies, but it might analyze e.g. plugins depending on configuration.
+     *
+     * @since 1.0.
+     */
+    @Parameter(property = &quot;processDependencies&quot;, defaultValue = &quot;true&quot;)
+    protected boolean processDependencies;
+
+    // TODO: Add test coverage for this before exposing it as an option
+    // @Parameter(property = &quot;processPluginDependenciesInPluginManagement&quot;,
+    // defaultValue = &quot;true&quot;)
+    // private boolean processPluginDependenciesInPluginManagement;
+<span class="fc" id="L212">    private final boolean processPluginDependenciesInPluginManagement = true;</span>
+
+    // TODO: Add test coverage for this before exposing it as an option
+    // @Parameter(property = &quot;processPluginDependencies&quot;, defaultValue = &quot;true&quot;)
+    // protected boolean processPluginDependencies;
+<span class="fc" id="L217">    private final boolean processPluginDependencies = true;</span>
+
+    /**
+     * Only take these artifacts into consideration:&lt;br&gt;
+     * Comma-separated list of {@code groupId:[artifactId[:version]]} patterns
+     *
+     * &lt;p&gt;The wildcard &quot;*&quot; can be used as the only, first, last or both characters in each token.
+     * The version token does support version ranges.
+     *
+     * &lt;p&gt;Example: {@code &quot;mygroup:artifact:*,othergroup:*,anothergroup&quot;}
+     *
+     * @since 1.0.0
+     */
+    @Parameter(property = &quot;pluginDependencyIncludes&quot;, defaultValue = WildcardMatcher.WILDCARD)
+    private List&lt;String&gt; pluginDependencyIncludes;
+
+    /**
+     * Exclude these artifacts into consideration:&lt;br&gt;
+     * Comma-separated list of {@code groupId:[artifactId[:version]]} patterns
+     *
+     * &lt;p&gt;The wildcard &quot;*&quot; can be used as the only, first, last or both characters in each token.
+     * The version token does support version ranges.
+     *
+     * &lt;p&gt;Example: {@code &quot;mygroup:artifact:*,othergroup:*,anothergroup&quot;}
+     *
+     * @since 1.0.0
+     */
+    @Parameter(property = &quot;pluginDependencyExcludes&quot;)
+    private List&lt;String&gt; pluginDependencyExcludes;
+
+    /**
+     * Only take these artifacts into consideration.
+     *
+     * &lt;p&gt;Comma-separated list of extended GAV patterns.
+     *
+     * &lt;p&gt;Extended GAV: groupId:artifactId:version:type:classifier:scope
+     *
+     * &lt;p&gt;The wildcard &quot;*&quot; can be used as the only, first, last or both characters in each token.
+     * The version token does support version ranges.
+     *
+     * &lt;p&gt;Example: {@code &quot;mygroup:artifact:*,*:*:*:*:*:compile&quot;}
+     *
+     * @since 1.0.0
+     */
+    @Parameter(property = &quot;dependencyIncludes&quot;, defaultValue = WildcardMatcher.WILDCARD)
+    private List&lt;String&gt; dependencyIncludes;
+
+    /**
+     * Exclude these artifacts from consideration.
+     *
+     * &lt;p&gt;Comma-separated list of extended GAV patterns.
+     *
+     * &lt;p&gt;Extended GAV: groupId:artifactId:version:type:classifier:scope
+     *
+     * &lt;p&gt;The wildcard &quot;*&quot; can be used as the only, first, last or both characters in each token.
+     * The version token does support version ranges.
+     *
+     * &lt;p&gt;Example: {@code &quot;mygroup:artifact:*,*:*:*:*:*:provided,*:*:*:*:*:system&quot;}
+     *
+     * @since 1.0.0
+     */
+    @Parameter(property = &quot;dependencyExcludes&quot;)
+    private List&lt;String&gt; dependencyExcludes;
+
+    /**
+     * Only take these artifacts into consideration.
+     *
+     * &lt;p&gt;Comma-separated list of extended GAV patterns.
+     *
+     * &lt;p&gt;Extended GAV: groupId:artifactId:version:type:classifier:scope
+     *
+     * &lt;p&gt;The wildcard &quot;*&quot; can be used as the only, first, last or both characters in each token.
+     * The version token does support version ranges.
+     *
+     * &lt;p&gt;Example: {@code &quot;mygroup:artifact:*,*:*:*:*:*:compile&quot;}
+     *
+     * @since 1.0.0
+     */
+    @Parameter(property = &quot;dependencyManagementIncludes&quot;, defaultValue = WildcardMatcher.WILDCARD)
+    private List&lt;String&gt; dependencyManagementIncludes;
+
+    /**
+     * Exclude these artifacts from consideration.
+     *
+     * &lt;p&gt;Comma-separated list of extended GAV patterns.
+     *
+     * &lt;p&gt;Extended GAV: groupId:artifactId:version:type:classifier:scope
+     *
+     * &lt;p&gt;The wildcard &quot;*&quot; can be used as the only, first, last or both characters in each token.
+     * The version token does support version ranges.
+     *
+     * &lt;p&gt;Example: {@code &quot;mygroup:artifact:*,*:*:*:*:*:provided,*:*:*:*:*:system&quot;}
+     *
+     * @since 1.0.0
+     */
+    @Parameter(property = &quot;dependencyManagementExcludes&quot;)
+    private List&lt;String&gt; dependencyManagementExcludes;
+
+    @Inject
+<span class="fc" id="L316">    public LibYearMojo(RepositorySystem repositorySystem, org.eclipse.aether.RepositorySystem aetherRepositorySystem) {</span>
+<span class="fc" id="L317">        this.repositorySystem = repositorySystem;</span>
+<span class="fc" id="L318">        this.aetherRepositorySystem = aetherRepositorySystem;</span>
+
+<span class="fc" id="L320">        httpClient = setupHTTPClient();</span>
+<span class="fc" id="L321">    }</span>
+
+    private CloseableHttpClient setupHTTPClient() {
+<span class="fc" id="L324">        RequestConfig config = RequestConfig.custom()</span>
+<span class="fc" id="L325">                .setConnectTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)</span>
+<span class="fc" id="L326">                .setConnectionRequestTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)</span>
+<span class="fc" id="L327">                .setSocketTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)</span>
+<span class="fc" id="L328">                .build();</span>
+
+<span class="fc" id="L330">        return HttpClientBuilder.create()</span>
+<span class="fc" id="L331">                .setConnectionManager(new PoolingHttpClientConnectionManager())</span>
+<span class="fc" id="L332">                .setMaxConnPerRoute(20)</span>
+<span class="fc" id="L333">                .setMaxConnTotal(20)</span>
+<span class="fc" id="L334">                .setDefaultRequestConfig(config)</span>
+<span class="fc" id="L335">                .addInterceptorLast((HttpResponseInterceptor) (response, context) -&gt; {</span>
+                    // By default Apache HTTP client doesn't retry on 5xx errors
+<span class="fc bfc" id="L337" title="All 2 branches covered.">                    if (response.getStatusLine().getStatusCode() &gt;= 500) {</span>
+<span class="fc" id="L338">                        throw new IOException(response.getStatusLine().getReasonPhrase());</span>
+                    }
+<span class="fc" id="L340">                })</span>
+<span class="fc" id="L341">                .setRetryHandler(new DefaultHttpRequestRetryHandler(MAVEN_API_HTTP_RETRY_COUNT, true))</span>
+<span class="fc" id="L342">                .build();</span>
+    }
+
+    /**
+     * Setter for property 'project'.
+     *
+     * @param project Value to set for property 'project'.
+     */
+    protected void setProject(MavenProject project) {
+<span class="fc" id="L351">        this.project = project;</span>
+<span class="fc" id="L352">    }</span>
+
+    /**
+     * Setter for property 'session'.
+     *
+     * @param session Value to set for property 'session'.
+     */
+    protected void setSession(MavenSession session) {
+<span class="fc" id="L360">        this.session = session;</span>
+<span class="fc" id="L361">    }</span>
+
+    /** Set the search URI */
+    protected void setSearchUri(String uri) {
+<span class="fc" id="L365">        SEARCH_URI = uri;</span>
+<span class="fc" id="L366">    }</span>
+
+    /** Setter for the HTTP timeout for API calls */
+    protected void setHttpTimeout(int seconds) {
+<span class="fc" id="L370">        MAVEN_API_HTTP_TIMEOUT_SECONDS = seconds;</span>
+<span class="fc" id="L371">    }</span>
+
+    /**
+     * Setter for the HTTP API fetch retry count
+     *
+     * @param count the number of retries before giving up
+     */
+    protected void setFetchRetryCount(int count) {
+<span class="fc" id="L379">        MAVEN_API_HTTP_RETRY_COUNT = count;</span>
+<span class="fc" id="L380">    }</span>
+
+    private static boolean dependenciesMatch(Dependency dependency, Dependency managedDependency) {
+<span class="pc bpc" id="L383" title="1 of 2 branches missed.">        return managedDependency.getGroupId().equals(dependency.getGroupId())</span>
+<span class="pc bpc" id="L384" title="1 of 2 branches missed.">                &amp;&amp; managedDependency.getArtifactId().equals(dependency.getArtifactId());</span>
+    }
+
+    /**
+     * Main entry point for the plugin.
+     *
+     * @throws MojoExecutionException On failure, such as upstream HTTP issues
+     */
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L393">        Set&lt;Dependency&gt; dependencyManagement = emptySet();</span>
+
+<span class="fc" id="L395">        float thisProjectLibYearsOutdated = 0;</span>
+
+        try {
+<span class="fc bfc" id="L398" title="All 2 branches covered.">            if (processDependencyManagement) {</span>
+                // Get all dependencies from &lt;dependencyManagement /&gt;
+<span class="fc" id="L400">                Set&lt;Dependency&gt; dependenciesFromDependencyManagement = extractDependenciesFromDependencyManagement(</span>
+<span class="fc" id="L401">                        project, processDependencyManagementTransitive, getLog());</span>
+
+                // Handle user settings - filter out anything that's excluded
+<span class="fc" id="L404">                dependencyManagement = filterDependencies(</span>
+                        dependenciesFromDependencyManagement,
+                        dependencyManagementIncludes,
+                        dependencyManagementExcludes,
+                        &quot;Dependency Management&quot;,
+<span class="fc" id="L409">                        getLog());</span>
+
+                // Log anything that's left
+<span class="fc" id="L412">                thisProjectLibYearsOutdated += processDependencyUpdates(</span>
+<span class="fc" id="L413">                        getHelper().lookupDependenciesUpdates(dependencyManagement, false, false),</span>
+                        &quot;Dependency Management&quot;);
+            }
+
+<span class="fc bfc" id="L417" title="All 2 branches covered.">            if (processDependencies) {</span>
+<span class="fc" id="L418">                Set&lt;Dependency&gt; finalDependencyManagement = dependencyManagement;</span>
+
+                // Get a list of dependencies and versions, using the versions from dependency management if they exist
+<span class="fc" id="L421">                Set&lt;Dependency&gt; dependenciesExcludingOverridden = project.getDependencies().parallelStream()</span>
+<span class="fc" id="L422">                        .filter(dep -&gt; finalDependencyManagement.parallelStream()</span>
+<span class="fc" id="L423">                                .noneMatch(depMan -&gt; dependenciesMatch(dep, depMan)))</span>
+<span class="fc" id="L424">                        .collect(() -&gt; new TreeSet&lt;&gt;(DependencyComparator.INSTANCE), Set::add, Set::addAll);</span>
+
+                // Handle user settings - filter out anything that's excluded
+<span class="fc" id="L427">                Set&lt;Dependency&gt; dependencies = filterDependencies(</span>
+                        dependenciesExcludingOverridden,
+                        dependencyIncludes,
+                        dependencyExcludes,
+                        &quot;Dependencies&quot;,
+<span class="fc" id="L432">                        getLog());</span>
+
+                // Log anything that's left
+<span class="fc" id="L435">                thisProjectLibYearsOutdated += processDependencyUpdates(</span>
+<span class="fc" id="L436">                        getHelper().lookupDependenciesUpdates(dependencies, false, false), &quot;Dependencies&quot;);</span>
+            }
+
+            if (processPluginDependenciesInPluginManagement) {
+                // Get all dependencies of plugins from dependencyManagement
+<span class="fc" id="L441">                Set&lt;Dependency&gt; pluginDependenciesFromDepManagement =</span>
+<span class="fc" id="L442">                        extractPluginDependenciesFromPluginsInPluginManagement(project);</span>
+
+                // Handle user settings - filter out anything that's excluded
+<span class="fc" id="L445">                Set&lt;Dependency&gt; filteredPluginDependenciesFromDepManagement = filterDependencies(</span>
+                        pluginDependenciesFromDepManagement,
+                        pluginManagementDependencyIncludes,
+                        pluginManagementDependencyExcludes,
+                        &quot;Plugin Management Dependencies&quot;,
+<span class="fc" id="L450">                        getLog());</span>
+
+                // Log anything that's left
+<span class="fc" id="L453">                thisProjectLibYearsOutdated += processDependencyUpdates(</span>
+<span class="fc" id="L454">                        getHelper()</span>
+<span class="fc" id="L455">                                .lookupDependenciesUpdates(filteredPluginDependenciesFromDepManagement, false, false),</span>
+                        &quot;pluginManagement of plugins&quot;);
+            }
+
+            if (processPluginDependencies) {
+                // Get all dependencies of plugins
+<span class="fc" id="L461">                Set&lt;Dependency&gt; pluginDependencies = extractDependenciesFromPlugins(project);</span>
+
+                // Handle user settings - filter out anything that's excluded
+<span class="fc" id="L464">                Set&lt;Dependency&gt; filteredPluginDependencies = filterDependencies(</span>
+                        pluginDependencies,
+                        pluginDependencyIncludes,
+                        pluginDependencyExcludes,
+                        &quot;Plugin Dependencies&quot;,
+<span class="fc" id="L469">                        getLog());</span>
+
+                // Log anything that's left
+<span class="fc" id="L472">                thisProjectLibYearsOutdated += processDependencyUpdates(</span>
+<span class="fc" id="L473">                        getHelper().lookupDependenciesUpdates(filteredPluginDependencies, false, false),</span>
+                        &quot;Plugin Dependencies&quot;);
+            }
+
+<span class="fc bfc" id="L477" title="All 2 branches covered.">            if (thisProjectLibYearsOutdated != 0) {</span>
+<span class="fc" id="L478">                getLog().info(String.format(&quot;This module is %.2f libyears behind&quot;, thisProjectLibYearsOutdated));</span>
+            }
+
+<span class="pc bpc" id="L481" title="1 of 4 branches missed.">            if (maxLibYears != 0 &amp;&amp; thisProjectLibYearsOutdated &gt;= maxLibYears) {</span>
+<span class="fc" id="L482">                getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L483">                getLog().error(&quot;This module exceeds the maximum dependency age of &quot; + maxLibYears + &quot; libyears&quot;);</span>
+<span class="fc" id="L484">                throw new MojoExecutionException(&quot;Dependencies exceed maximum specified age in libyears&quot;);</span>
+            }
+
+<span class="fc" id="L487">            projectAges.put(project.getName(), thisProjectLibYearsOutdated);</span>
+
+            /*
+            TODO: Re-enable this. Currently it doesn't work without being an aggregator project since the plugin
+            is re-created with each invocation. Sharing via static variables doesn't seem to work - I might have
+            to try storing a database file in target/. The effect of this is that the summary currently only shows
+            stats from the latest module.
+            */
+            // if (isLastProjectInReactor() &amp;&amp; session.getProjects().size() != 1 &amp;&amp; libWeeksOutDated.get() != 0) {
+            //     logProjectSummary();
+            // }
+<span class="fc" id="L498">        } catch (Exception e) {</span>
+<span class="fc" id="L499">            throw new MojoExecutionException(e.getMessage(), e);</span>
+<span class="fc" id="L500">        }</span>
+<span class="fc" id="L501">    }</span>
+
+    /**
+     * Log the total age, most outdated project and the most outdated dependency of the entire project.
+     */
+    private void logProjectSummary() {
+<span class="nc" id="L507">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L508">        getLog().info(String.format(&quot;The project as a whole is %.2f libyears behind&quot;, libWeeksOutDated.get() / 52f));</span>
+
+<span class="nc" id="L510">        projectAges.entrySet().stream().max(Map.Entry.comparingByValue()).ifPresent(module -&gt; getLog().info(</span>
+<span class="nc" id="L511">                        String.format(</span>
+<span class="nc" id="L512">                                &quot;The oldest module is %s (%.2f libyears behind)&quot;, module.getKey(), module.getValue())));</span>
+
+<span class="nc" id="L514">        dependencyAges.entrySet().stream().max(Map.Entry.comparingByValue()).ifPresent(dep -&gt; getLog().info(</span>
+<span class="nc" id="L515">                        String.format(</span>
+<span class="nc" id="L516">                                &quot;The oldest dependency is %s (%.2f libyears behind)&quot;, dep.getKey(), dep.getValue())));</span>
+<span class="nc" id="L517">    }</span>
+
+    private VersionsHelper getHelper() throws MojoExecutionException {
+<span class="fc bfc" id="L520" title="All 2 branches covered.">        if (helper == null) {</span>
+<span class="fc" id="L521">            helper = new DefaultVersionsHelper.Builder()</span>
+<span class="fc" id="L522">                    .withRepositorySystem(repositorySystem)</span>
+<span class="fc" id="L523">                    .withAetherRepositorySystem(aetherRepositorySystem)</span>
+<span class="fc" id="L524">                    .withIgnoredVersions(ignoredVersions)</span>
+<span class="fc" id="L525">                    .withLog(getLog())</span>
+<span class="fc" id="L526">                    .withMavenSession(session)</span>
+<span class="fc" id="L527">                    .build();</span>
+        }
+<span class="fc" id="L529">        return helper;</span>
+    }
+
+    /**
+     * Iterates over the list of updates for the current pom section, logging how far behind the latest version they are.
+     *
+     * @param updates   All of the available updates for this section
+     * @param section   The name of the section (e.g. &quot;Plugin Management&quot;)
+     */
+    private float processDependencyUpdates(Map&lt;Dependency, ArtifactVersions&gt; updates, String section) {
+<span class="fc" id="L539">        Map&lt;String, Pair&lt;LocalDate, LocalDate&gt;&gt; dependencyVersionUpdates = Maps.newHashMap();</span>
+
+<span class="fc bfc" id="L541" title="All 2 branches covered.">        for (ArtifactVersions versions : updates.values()) {</span>
+<span class="fc" id="L542">            final String current = versions.getCurrentVersion().toString();</span>
+<span class="fc" id="L543">            ArtifactVersion latest = versions.getNewestUpdate(Optional.empty(), false);</span>
+
+<span class="fc bfc" id="L545" title="All 2 branches covered.">            if (latest == null) {</span>
+<span class="fc" id="L546">                continue;</span>
+            }
+
+<span class="pc bpc" id="L549" title="1 of 2 branches missed.">            if (current.equals(latest.toString())) {</span>
+<span class="nc" id="L550">                continue;</span>
+            }
+
+<span class="fc" id="L553">            Artifact /* current */ artifact = versions.getArtifact();</span>
+<span class="fc" id="L554">            Optional&lt;LocalDate&gt; latestVersionReleaseDate =</span>
+<span class="fc" id="L555">                    getReleaseDate(artifact.getGroupId(), artifact.getArtifactId(), latest.toString());</span>
+<span class="fc" id="L556">            Optional&lt;LocalDate&gt; currentVersionReleaseDate =</span>
+<span class="fc" id="L557">                    getReleaseDate(artifact.getGroupId(), artifact.getArtifactId(), current);</span>
+
+<span class="pc bpc" id="L559" title="1 of 4 branches missed.">            if (latestVersionReleaseDate.isEmpty() || currentVersionReleaseDate.isEmpty()) {</span>
+                // We couldn't find version details, skip
+<span class="nc" id="L561">                continue;</span>
+            }
+
+<span class="fc" id="L564">            String ga = String.format(&quot;%s:%s&quot;, artifact.getGroupId(), artifact.getArtifactId());</span>
+<span class="fc" id="L565">            dependencyVersionUpdates.put(ga, Pair.of(currentVersionReleaseDate.get(), latestVersionReleaseDate.get()));</span>
+<span class="fc" id="L566">        }</span>
+
+<span class="fc bfc" id="L568" title="All 2 branches covered.">        if (dependencyVersionUpdates.isEmpty()) {</span>
+<span class="fc" id="L569">            return 0;</span>
+        }
+
+<span class="fc" id="L572">        return logDependencyUpdates(section, dependencyVersionUpdates);</span>
+    }
+
+    private long getLibWeeksBetween(LocalDate earlierDate, LocalDate laterDate) {
+<span class="fc" id="L576">        return ChronoUnit.WEEKS.between(earlierDate, laterDate);</span>
+    }
+
+    /**
+     * Given a set of outdated dependencies, print how many libyears behind they are to the
+     * screen.
+     *
+     * @param pomSection The section of the pom we are analyzing
+     * @param outdatedDependencies The outdated dependencies
+     * @return A total libyear count for the provided dependencies
+     */
+    private float logDependencyUpdates(
+            String pomSection, Map&lt;String, Pair&lt;LocalDate, LocalDate&gt;&gt; outdatedDependencies) {
+<span class="pc bpc" id="L589" title="1 of 2 branches missed.">        if (outdatedDependencies.isEmpty()) {</span>
+<span class="nc" id="L590">            return 0.0f;</span>
+        }
+
+<span class="fc" id="L593">        Map&lt;String, Pair&lt;LocalDate, LocalDate&gt;&gt; validOutdatedDependencies = outdatedDependencies.entrySet().stream()</span>
+<span class="fc" id="L594">                .filter((dep) -&gt; {</span>
+<span class="fc" id="L595">                    LocalDate currentReleaseDate = dep.getValue().getLeft();</span>
+<span class="fc" id="L596">                    LocalDate latestReleaseDate = dep.getValue().getRight();</span>
+
+                    // This is a bug in the underlying logic, where the
+                    // display-dependency-updates plugin will include
+                    // updates from e.g. commons-io:commons-io 2.11.0 -&gt;
+                    // 20030203.000550, despite 2.11.0 being ~15 years
+                    // newer. We return here, so we don't count a negative
+                    // libyear count, even though the dependency may still be
+                    // outdated. Anybody experiencing this could use the
+                    // ignoredVersions setting instead
+<span class="pc bpc" id="L606" title="1 of 2 branches missed.">                    return !currentReleaseDate.isAfter(latestReleaseDate);</span>
+                })
+<span class="fc" id="L608">                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));</span>
+
+<span class="pc bpc" id="L610" title="1 of 2 branches missed.">        if (validOutdatedDependencies.isEmpty()) {</span>
+<span class="nc" id="L611">            return 0.0f;</span>
+        }
+
+<span class="fc" id="L614">        float[] yearsOutdated = {0};</span>
+
+<span class="fc" id="L616">        getLog().info(String.format(&quot;The following dependencies in %s have newer versions:&quot;, pomSection));</span>
+<span class="fc" id="L617">        validOutdatedDependencies.entrySet().stream()</span>
+<span class="fc" id="L618">                .sorted(Map.Entry.comparingByKey())</span>
+<span class="fc" id="L619">                .forEach((dep) -&gt; {</span>
+<span class="fc" id="L620">                    LocalDate currentReleaseDate = dep.getValue().getLeft();</span>
+<span class="fc" id="L621">                    LocalDate latestReleaseDate = dep.getValue().getRight();</span>
+
+<span class="fc" id="L623">                    long libWeeksOutdated = getLibWeeksBetween(currentReleaseDate, latestReleaseDate);</span>
+<span class="fc" id="L624">                    float libYearsOutdated = libWeeksOutdated / 52f;</span>
+
+<span class="fc" id="L626">                    logDependencyAge(dep, libYearsOutdated);</span>
+<span class="fc" id="L627">                    yearsOutdated[0] += libYearsOutdated;</span>
+<span class="fc" id="L628">                    libWeeksOutDated.getAndAdd(libWeeksOutdated);</span>
+
+<span class="fc bfc" id="L630" title="All 2 branches covered.">                    if (!dependencyAges.containsKey(dep.getKey())</span>
+<span class="fc bfc" id="L631" title="All 2 branches covered.">                            || dependencyAges.get(dep.getKey()) &lt; libYearsOutdated) {</span>
+<span class="fc" id="L632">                        dependencyAges.put(dep.getKey(), libYearsOutdated);</span>
+                    }
+<span class="fc" id="L634">                });</span>
+
+<span class="fc" id="L636">        getLog().info(&quot;&quot;);</span>
+
+<span class="fc" id="L638">        return yearsOutdated[0];</span>
+    }
+
+    /**
+     * Display the output for how many libyears behind the specified dependency is. Wraps at {@link #INFO_PAD_SIZE}.
+     * &lt;p /&gt;
+     * Prints output in the form
+     * &lt;p /&gt;
+     * &lt;code&gt;
+     *     mygroup:myartifact ................ 1.0 years
+     *     mygroup:myartifactwithlonglonglongname
+     *     ................................... 2.0 years
+     * &lt;/code&gt;
+     *
+     * @param dep   The dependency
+     * @param libYearsOutdated  How many libyears behind it is
+     */
+    private void logDependencyAge(Map.Entry&lt;String, Pair&lt;LocalDate, LocalDate&gt;&gt; dep, float libYearsOutdated) {
+<span class="fc" id="L656">        String right = String.format(&quot; %.2f libyears&quot;, libYearsOutdated);</span>
+<span class="fc" id="L657">        String left = &quot;  &quot; + dep.getKey() + &quot; &quot;;</span>
+
+<span class="fc bfc" id="L659" title="All 2 branches covered.">        if ((left.length() + right.length()) &gt; INFO_PAD_SIZE) {</span>
+<span class="fc" id="L660">            getLog().info(left);</span>
+<span class="fc" id="L661">            String versionWithDots = StringUtils.rightPad(&quot;  &quot;, INFO_PAD_SIZE - right.length(), &quot;.&quot;);</span>
+<span class="fc" id="L662">            getLog().info(versionWithDots + right);</span>
+<span class="fc" id="L663">        } else {</span>
+<span class="fc" id="L664">            String versionWithDots = StringUtils.rightPad(left, INFO_PAD_SIZE - right.length(), &quot;.&quot;);</span>
+<span class="fc" id="L665">            getLog().info(versionWithDots + right);</span>
+        }
+<span class="fc" id="L667">    }</span>
+
+    /**
+     * Make an API call to {@link #SEARCH_URI} to fetch the release date of the specified artifact.
+     * Uses the cache in {@link #dependencyVersionReleaseDates} if possible.
+     *
+     * @param groupId The required artifact's groupId
+     * @param artifactId The required artifact's artifactId
+     * @param version The required artifact's version
+     * @return The creation date of the artifact
+     */
+    private Optional&lt;LocalDate&gt; getReleaseDate(String groupId, String artifactId, String version) {
+<span class="fc" id="L679">        String ga = String.format(&quot;%s:%s&quot;, groupId, artifactId);</span>
+<span class="fc" id="L680">        Map&lt;String, LocalDate&gt; versionReleaseDates = dependencyVersionReleaseDates.getOrDefault(ga, Maps.newHashMap());</span>
+<span class="fc bfc" id="L681" title="All 2 branches covered.">        if (versionReleaseDates.containsKey(version)) {</span>
+<span class="fc" id="L682">            return Optional.of(versionReleaseDates.get(version));</span>
+        }
+
+        try {
+<span class="fc" id="L686">            Optional&lt;String&gt; response = fetchReleaseDate(groupId, artifactId, version);</span>
+
+<span class="fc bfc" id="L688" title="All 2 branches covered.">            if (response.isEmpty()) {</span>
+<span class="fc" id="L689">                return Optional.empty();</span>
+            }
+
+<span class="fc" id="L692">            JSONObject json = new JSONObject(response.get());</span>
+<span class="fc" id="L693">            JSONObject queryResponse = json.getJSONObject(&quot;response&quot;);</span>
+<span class="fc bfc" id="L694" title="All 2 branches covered.">            if (queryResponse.getLong(&quot;numFound&quot;) != 0) {</span>
+<span class="fc" id="L695">                long epochTime =</span>
+<span class="fc" id="L696">                        queryResponse.getJSONArray(&quot;docs&quot;).getJSONObject(0).getLong(&quot;timestamp&quot;);</span>
+
+<span class="fc" id="L698">                getLog().debug(String.format(&quot;Found release time %d for %s:%s&quot;, epochTime, ga, version));</span>
+
+<span class="fc" id="L700">                LocalDate releaseDate = Instant.ofEpochMilli(epochTime)</span>
+<span class="fc" id="L701">                        .atZone(ZoneId.systemDefault())</span>
+<span class="fc" id="L702">                        .toLocalDate();</span>
+
+<span class="fc" id="L704">                versionReleaseDates.put(version, releaseDate);</span>
+<span class="fc" id="L705">                dependencyVersionReleaseDates.put(ga, versionReleaseDates);</span>
+<span class="fc" id="L706">                return Optional.of(releaseDate);</span>
+            } else {
+<span class="fc" id="L708">                getLog().debug(String.format(&quot;Could not find artifact for %s %s&quot;, ga, version));</span>
+<span class="fc" id="L709">                return Optional.empty();</span>
+            }
+<span class="fc" id="L711">        } catch (Exception e) {</span>
+<span class="fc" id="L712">            getLog().error(String.format(&quot;Failed to fetch release date for %s %s: %s&quot;, ga, version, e.getMessage()));</span>
+<span class="fc" id="L713">            return Optional.empty();</span>
+        }
+    }
+
+    /** Make the API call to fetch the release date */
+    private Optional&lt;String&gt; fetchReleaseDate(String groupId, String artifactId, String version) throws IOException {
+<span class="fc" id="L719">        URI artifactUri = URI.create(String.format(</span>
+                &quot;%s/solrsearch/select?q=g:%s+AND+a:%s+AND+v:%s&amp;wt=json&quot;, SEARCH_URI, groupId, artifactId, version));
+
+<span class="fc" id="L722">        getLog().debug(&quot;Fetching &quot; + artifactUri);</span>
+
+<span class="fc" id="L724">        final HttpGet httpGet = new HttpGet(artifactUri);</span>
+
+        try {
+<span class="fc" id="L727">            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {</span>
+<span class="pc bpc" id="L728" title="1 of 2 branches missed.">                if (response.getStatusLine().getStatusCode() != 200) {</span>
+<span class="nc" id="L729">                    getLog().error(String.format(</span>
+                            &quot;Failed to fetch release date for %s:%s %s (%s)&quot;,
+                            groupId,
+                            artifactId,
+                            version,
+<span class="nc" id="L734">                            response.getStatusLine().getReasonPhrase()));</span>
+<span class="nc" id="L735">                    return Optional.empty();</span>
+                }
+
+<span class="fc" id="L738">                String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);</span>
+<span class="fc" id="L739">                return Optional.of(responseBody);</span>
+<span class="nc bnc" id="L740" title="All 2 branches missed.">            }</span>
+<span class="fc" id="L741">        } catch (ConnectTimeoutException | SocketTimeoutException e) {</span>
+<span class="fc" id="L742">            getLog().error(String.format(</span>
+                    &quot;Failed to fetch release date for %s:%s %s (%s)&quot;,
+                    groupId, artifactId, version, &quot;request timed out&quot;));
+<span class="fc" id="L745">            return Optional.empty();</span>
+        }
+    }
+
+    /**
+     * Calculate if this is the last project in a multi-module pom. This is used to show a total
+     * &quot;libyears behind&quot; figure for this project and all child projects.
+     *
+     * @return Whether this is the last project to be analysed by the plugin
+     */
+    private boolean isLastProjectInReactor() {
+<span class="nc" id="L756">        List&lt;MavenProject&gt; projects = session.getProjectDependencyGraph().getSortedProjects();</span>
+<span class="nc" id="L757">        int size = projects.size();</span>
+<span class="nc" id="L758">        MavenProject lastProject = projects.get(size - 1);</span>
+<span class="nc bnc" id="L759" title="All 2 branches missed.">        return lastProject == project;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>
