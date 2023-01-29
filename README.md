@@ -6,8 +6,8 @@
 # libyear-maven-plugin
 
 This Maven plugin implements the [libyear](https://libyear.com/) dependency
-freshness measure. It can be executed standalone or included as part of your
-build.
+freshness measure, showing you how many years behind the latest version each of
+your dependencies are.
 
 When executed, you'll see an output like this for each of your modules:
 ```
