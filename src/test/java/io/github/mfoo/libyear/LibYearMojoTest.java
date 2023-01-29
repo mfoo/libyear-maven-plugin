@@ -1209,7 +1209,7 @@ public class LibYearMojoTest {
         assertTrue(((InMemoryTestLogger) mojo.getLog())
                 .errorLogs.stream()
                         .anyMatch(l ->
-                                l.contains("This project exceeds the maximum" + " dependency age of 0.1 libyears")));
+                                l.contains("This module exceeds the maximum" + " dependency age of 0.1 libyears")));
     }
 
     private void allowProcessingAllDependencies(LibYearMojo mojo) throws IllegalAccessException {
