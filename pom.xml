@@ -349,7 +349,7 @@
 				<!-- For JUnit code coverage analysis on SonarCloud as part of CI builds -->
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.9</version>
+				<version>0.8.10</version>
 				<executions>
 					<execution>
 						<id>prepare-agent</id>
