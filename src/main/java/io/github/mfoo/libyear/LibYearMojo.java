@@ -514,7 +514,7 @@ public class LibYearMojo extends AbstractMojo {
 
         for (ArtifactVersions versions : updates.values()) {
             final String current = versions.getCurrentVersion().toString();
-            ArtifactVersion latest = versions.getNewestUpdate(Optional.empty(), false);
+            ArtifactVersion latest = versions.getNewestUpdateWithinSegment(Optional.empty(), false);
 
             if (latest == null) {
                 continue;
