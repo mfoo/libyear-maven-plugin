@@ -161,7 +161,7 @@
 			<!-- Necessary at test runtime due to Mockito exceptions, see https://github.com/codehaus-plexus/plexus-utils/releases/tag/plexus-utils-4.0.0 -->
 			<groupId>org.codehaus.plexus</groupId>
 			<artifactId>plexus-xml</artifactId>
-			<version>4.0.2</version>
+			<version>4.0.3</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
