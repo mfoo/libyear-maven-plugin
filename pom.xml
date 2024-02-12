@@ -235,7 +235,7 @@
 					This section exists to remediate it -->
 				<groupId>commons-codec</groupId>
 				<artifactId>commons-codec</artifactId>
-				<version>1.16.0</version>
+				<version>1.16.1</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
