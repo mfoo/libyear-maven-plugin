@@ -60,7 +60,7 @@
 		<maven.compiler.source>11</maven.compiler.source>
 		<maven.compiler.target>11</maven.compiler.target>
 		<maven.dependencies.version>3.9.6</maven.dependencies.version>
-		<codehaus.versions.dependencies.version>2.16.0</codehaus.versions.dependencies.version>
+		<codehaus.versions.dependencies.version>2.16.2</codehaus.versions.dependencies.version>
 		<junit.jupiter.version>5.10.2</junit.jupiter.version>
 		<github.global.server>github</github.global.server>
 
