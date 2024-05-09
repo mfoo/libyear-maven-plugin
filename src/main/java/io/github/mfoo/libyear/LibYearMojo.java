@@ -410,7 +410,7 @@ public class LibYearMojo extends AbstractMojo {
 
                 // Log anything that's left
                 thisProjectLibYearsOutdated += processDependencyUpdates(
-                        getHelper().lookupDependenciesUpdates(dependencyManagement, false, false),
+                        getHelper().lookupDependenciesUpdates(dependencyManagement.stream(), false, false),
                         "Dependency Management");
             }
 
@@ -433,7 +433,7 @@ public class LibYearMojo extends AbstractMojo {
 
                 // Log anything that's left
                 thisProjectLibYearsOutdated += processDependencyUpdates(
-                        getHelper().lookupDependenciesUpdates(dependencies, false, false), "Dependencies");
+                        getHelper().lookupDependenciesUpdates(dependencies.stream(), false, false), "Dependencies");
             }
 
             if (processPluginDependenciesInPluginManagement) {
@@ -452,7 +452,8 @@ public class LibYearMojo extends AbstractMojo {
                 // Log anything that's left
                 thisProjectLibYearsOutdated += processDependencyUpdates(
                         getHelper()
-                                .lookupDependenciesUpdates(filteredPluginDependenciesFromDepManagement, false, false),
+                                .lookupDependenciesUpdates(
+                                        filteredPluginDependenciesFromDepManagement.stream(), false, false),
                         "pluginManagement of plugins");
             }
 
@@ -470,7 +471,7 @@ public class LibYearMojo extends AbstractMojo {
 
                 // Log anything that's left
                 thisProjectLibYearsOutdated += processDependencyUpdates(
-                        getHelper().lookupDependenciesUpdates(filteredPluginDependencies, false, false),
+                        getHelper().lookupDependenciesUpdates(filteredPluginDependencies.stream(), false, false),
                         "Plugin Dependencies");
             }
 
