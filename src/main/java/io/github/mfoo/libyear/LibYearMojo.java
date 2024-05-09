@@ -513,6 +513,10 @@ public class LibYearMojo extends AbstractMojo {
         Map<String, Pair<LocalDate, LocalDate>> dependencyVersionUpdates = Maps.newHashMap();
 
         for (ArtifactVersions versions : updates.values()) {
+	    if (versions.getCurrentVersion() == null) {
+		continue;
+	    }
+	    
             final String current = versions.getCurrentVersion().toString();
             ArtifactVersion latest = versions.getNewestUpdateWithinSegment(Optional.empty(), false);
 
