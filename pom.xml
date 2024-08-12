@@ -222,7 +222,7 @@
 				logger implementation on projects using the plugin, so ensure this is test-scoped. -->
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
-			<version>2.0.13</version>
+			<version>2.0.16</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
