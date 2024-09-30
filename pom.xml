@@ -155,7 +155,7 @@
 		<dependency>
 			<groupId>org.codehaus.plexus</groupId>
 			<artifactId>plexus-utils</artifactId>
-			<version>4.0.1</version>
+			<version>4.0.2</version>
 		</dependency>
 		<dependency>
 			<!-- Necessary at test runtime due to Mockito exceptions, see https://github.com/codehaus-plexus/plexus-utils/releases/tag/plexus-utils-4.0.0 -->
