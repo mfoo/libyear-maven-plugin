@@ -36,8 +36,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -55,6 +58,7 @@ import org.json.JSONObject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -1210,6 +1214,74 @@ public class LibYearMojoTest {
                 .errorLogs.stream()
                         .anyMatch(l ->
                                 l.contains("This module exceeds the maximum" + " dependency age of 0.1 libyears")));
+    }
+
+    @Test
+    public void reportFileGenerated(@TempDir Path tempDir) throws Exception {
+        Path reportFile = tempDir.resolve("libyear_testreport.txt");
+
+        LibYearMojo mojo =
+                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
+                    {
+                        put("default-dependency", new String[] {"1.0.0", "2.0.0"});
+                        put("default2-dependency", new String[] {"3.0.0", "4.0.0"});
+                    }
+                })) {
+                    {
+                        Dependency dep1 = DependencyBuilder.newBuilder()
+                                .withGroupId("default-group")
+                                .withArtifactId("default-dependency")
+                                .withVersion("1.0.0")
+                                .build();
+
+                        Dependency dep2 = DependencyBuilder.newBuilder()
+                                .withGroupId("default-group")
+                                .withArtifactId("default2-dependency")
+                                .withVersion("3.0.0")
+                                .build();
+
+                        MavenProject project = new MavenProjectBuilder()
+                                .withDependencies(Arrays.asList(dep1, dep2))
+                                .build();
+
+                        setProject(project);
+                        allowProcessingAllDependencies(this);
+
+                        setVariableValueToObject(
+                                this, "reportFile", reportFile.toAbsolutePath().toString());
+                        setVariableValueToObject(this, "minLibYearsForReport", 2);
+
+                        setPluginContext(new HashMap<>());
+
+                        setSession(mockMavenSession(project));
+                        setSearchUri("http://localhost:8080");
+
+                        setLog(new InMemoryTestLogger());
+                    }
+                };
+
+        LocalDateTime now = LocalDateTime.now();
+
+        stubResponseFor("default-group", "default-dependency", "1.0.0", now.minusYears(1));
+        stubResponseFor("default-group", "default-dependency", "2.0.0", now);
+        stubResponseFor("default-group", "default2-dependency", "3.0.0", now.minusYears(3));
+        stubResponseFor("default-group", "default2-dependency", "4.0.0", now);
+
+        mojo.execute();
+
+        assertTrue(((InMemoryTestLogger) mojo.getLog())
+                .infoLogs.stream()
+                        .anyMatch(
+                                (l) -> l.contains("default-group:default-dependency") && l.contains("1.00 libyears")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog())
+                .infoLogs.stream()
+                        .anyMatch(
+                                (l) -> l.contains("default-group:default2-dependency") && l.contains("3.00 libyears")));
+        assertTrue(((InMemoryTestLogger) mojo.getLog()).errorLogs.isEmpty());
+
+        String content = Files.readString(reportFile);
+        assertFalse(content.contains("default-group:default-dependency") && content.contains("1.00 libyears"));
+        assertTrue(content.contains("default-group:default2-dependency") && content.contains("3.00 libyears"));
     }
 
     private void allowProcessingAllDependencies(LibYearMojo mojo) throws IllegalAccessException {
