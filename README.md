@@ -25,7 +25,7 @@ When executed, you'll see an output like this for each of your modules:
 [INFO] This module is 2.73 libyears behind
 ```
 
-The plugin requires JDK 11+. It is heavily based on the [MojoHaus Versions Maven Plugin](https://www.mojohaus.org/versions/versions-maven-plugin/index.html).
+The plugin requires JDK 17+. It is heavily based on the [MojoHaus Versions Maven Plugin](https://www.mojohaus.org/versions/versions-maven-plugin/index.html).
 
 ## Usage
 
