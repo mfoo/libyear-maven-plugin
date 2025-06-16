@@ -893,12 +893,12 @@ public class LibYearMojoTest {
 
         assertTrue(((InMemoryTestLogger) mojo.getLog())
                 .errorLogs.stream()
-                        .anyMatch((l) -> l.contains(
-                                "Failed to fetch release date for" + " default-group:default-dependency" + " 1.0.0")));
+                        .anyMatch((l) ->
+                                l.contains("Failed to fetch release date for default-group:default-dependency 1.0.0")));
         assertTrue(((InMemoryTestLogger) mojo.getLog())
                 .errorLogs.stream()
-                        .anyMatch((l) -> l.contains(
-                                "Failed to fetch release date for" + " default-group:default-dependency" + " 2.0.0")));
+                        .anyMatch((l) ->
+                                l.contains("Failed to fetch release date for default-group:default-dependency 2.0.0")));
     }
 
     @Test
@@ -931,21 +931,18 @@ public class LibYearMojoTest {
                     }
                 };
 
-        stubFor(get(urlPathEqualTo("/solrsearch/select")).willReturn(ok().withFixedDelay(10_000 /* ms */)));
+        stubFor(get(urlPathEqualTo("/solrsearch/select")).willReturn(ok().withFixedDelay(6_000 /* ms */)));
 
         mojo.execute();
 
-        assertTrue(((InMemoryTestLogger) mojo.getLog())
-                .errorLogs.stream()
-                        .anyMatch((l) -> l.contains("Failed to fetch release date for"
-                                + " default-group:default-dependency"
-                                + " 1.0.0 (request timed out)")));
-        assertTrue(((InMemoryTestLogger) mojo.getLog())
-                .errorLogs.stream()
-                        .anyMatch((l) -> l.contains("Failed to fetch release date for"
-                                + " default-group:default-dependency"
-                                + " 2.0.0 (request timed out)")));
-        assertEquals(2, ((InMemoryTestLogger) mojo.getLog()).errorLogs.size());
+        InMemoryTestLogger log = (InMemoryTestLogger) mojo.getLog();
+        assertTrue(log.errorLogs.stream()
+                .anyMatch((l) -> l.contains(
+                        "Failed to fetch release date for default-group:default-dependency 1.0.0 (Read timed out)")));
+        assertTrue(log.errorLogs.stream()
+                .anyMatch((l) -> l.contains(
+                        "Failed to fetch release date for default-group:default-dependency 2.0.0 (Read timed out)")));
+        assertEquals(2, log.errorLogs.size());
     }
 
     @Test
@@ -1057,11 +1054,60 @@ public class LibYearMojoTest {
 
         mojo.execute();
 
-        assertFalse(((InMemoryTestLogger) mojo.getLog())
-                .infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency")));
-        assertTrue(((InMemoryTestLogger) mojo.getLog())
-                .errorLogs.contains(
-                        "Failed to fetch release date for default-group:default-dependency" + " 2.0.0: Server Error"));
+        InMemoryTestLogger log = (InMemoryTestLogger) mojo.getLog();
+        assertFalse(log.infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency")));
+        assertTrue(log.errorLogs.contains(
+                "Failed to fetch release date for default-group:default-dependency 2.0.0 (Server Error)"));
+    }
+
+    @Test
+    public void apiCallToMavenReturnsNotFoundStatus() throws Exception {
+        LibYearMojo mojo =
+                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
+                    {
+                        put("default-dependency", new String[] {"1.0.0", "2.0.0"});
+                    }
+                })) {
+                    {
+                        MavenProject project = new MavenProjectBuilder()
+                                .withDependencies(singletonList(DependencyBuilder.newBuilder()
+                                        .withGroupId("default-group")
+                                        .withArtifactId("default-dependency")
+                                        .withVersion("1.0.0")
+                                        .build()))
+                                .build();
+
+                        setProject(project);
+                        allowProcessingAllDependencies(this);
+                        setPluginContext(new HashMap<>());
+
+                        setSession(mockMavenSession(project));
+                        setSearchUri("http://localhost:8080");
+
+                        setLog(new InMemoryTestLogger());
+                    }
+                };
+
+        LocalDateTime now = LocalDateTime.now();
+
+        stubResponseFor("default-group", "default-dependency", "1.0.0", now.minusYears(1));
+
+        stubFor(get(urlPathEqualTo("/solrsearch/select"))
+                .withQueryParam(
+                        "q",
+                        equalTo(String.format(
+                                "g:%s AND a:%s AND v:%s", "default-group", "default-dependency", "2.0.0")))
+                .withQueryParam("wt", equalTo("json"))
+                .willReturn(com.github.tomakehurst.wiremock.client.WireMock.aResponse()
+                        .withStatus(404)
+                        .withStatusMessage("Not Found")));
+
+        mojo.execute();
+
+        InMemoryTestLogger log = (InMemoryTestLogger) mojo.getLog();
+        assertFalse(log.infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency")));
+        assertTrue(log.errorLogs.contains(
+                "Failed to fetch release date for default-group:default-dependency 2.0.0 (Not Found)"));
     }
 
     @Test
@@ -1108,7 +1154,7 @@ public class LibYearMojoTest {
         assertFalse(((InMemoryTestLogger) mojo.getLog())
                 .infoLogs.stream().anyMatch((l) -> l.contains("default-group:default-dependency")));
         assertTrue(((InMemoryTestLogger) mojo.getLog())
-                .debugLogs.contains("Could not find artifact for default-group:default-dependency" + " 2.0.0"));
+                .debugLogs.contains("Could not find artifact for default-group:default-dependency 2.0.0"));
     }
 
     @Test
@@ -1208,8 +1254,7 @@ public class LibYearMojoTest {
 
         assertTrue(((InMemoryTestLogger) mojo.getLog())
                 .errorLogs.stream()
-                        .anyMatch(l ->
-                                l.contains("This module exceeds the maximum" + " dependency age of 0.1 libyears")));
+                        .anyMatch(l -> l.contains("This module exceeds the maximum dependency age of 0.1 libyears")));
     }
 
     private void allowProcessingAllDependencies(LibYearMojo mojo) throws IllegalAccessException {

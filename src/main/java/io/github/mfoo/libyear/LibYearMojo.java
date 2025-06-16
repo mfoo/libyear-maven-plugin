@@ -24,7 +24,6 @@ import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractPluginDe
 
 import com.google.common.collect.Maps;
 import java.io.IOException;
-import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -41,16 +40,17 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.http.HttpResponseInterceptor;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.conn.ConnectTimeoutException;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.DefaultHttpRequestRetryHandler;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.core5.http.HttpResponseInterceptor;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.util.TimeValue;
+import org.apache.hc.core5.util.Timeout;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.execution.MavenSession;
@@ -322,23 +322,26 @@ public class LibYearMojo extends AbstractMojo {
 
     private CloseableHttpClient setupHTTPClient() {
         RequestConfig config = RequestConfig.custom()
-                .setConnectTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
-                .setConnectionRequestTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
-                .setSocketTimeout(MAVEN_API_HTTP_TIMEOUT_SECONDS * 1000)
+                .setConnectTimeout(Timeout.ofSeconds(MAVEN_API_HTTP_TIMEOUT_SECONDS))
+                .setConnectionRequestTimeout(Timeout.ofSeconds(MAVEN_API_HTTP_TIMEOUT_SECONDS))
+                .setResponseTimeout(Timeout.ofSeconds(MAVEN_API_HTTP_TIMEOUT_SECONDS))
                 .build();
 
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+        connectionManager.setMaxTotal(20);
+        connectionManager.setDefaultMaxPerRoute(20);
+
         return HttpClientBuilder.create()
-                .setConnectionManager(new PoolingHttpClientConnectionManager())
-                .setMaxConnPerRoute(20)
-                .setMaxConnTotal(20)
+                .setConnectionManager(connectionManager)
                 .setDefaultRequestConfig(config)
-                .addInterceptorLast((HttpResponseInterceptor) (response, context) -> {
+                .addResponseInterceptorLast((HttpResponseInterceptor) (response, entity, context) -> {
                     // By default Apache HTTP client doesn't retry on 5xx errors
-                    if (response.getStatusLine().getStatusCode() >= 500) {
-                        throw new IOException(response.getStatusLine().getReasonPhrase());
+                    if (response.getCode() >= 500) {
+                        throw new IOException(response.getReasonPhrase());
                     }
                 })
-                .setRetryHandler(new DefaultHttpRequestRetryHandler(MAVEN_API_HTTP_RETRY_COUNT, true))
+                .setRetryStrategy(
+                        new DefaultHttpRequestRetryStrategy(MAVEN_API_HTTP_RETRY_COUNT, TimeValue.ofSeconds(1)))
                 .build();
     }
 
@@ -690,7 +693,7 @@ public class LibYearMojo extends AbstractMojo {
     }
 
     /** Make the API call to fetch the release date */
-    private Optional<String> fetchReleaseDate(String groupId, String artifactId, String version) throws IOException {
+    private Optional<String> fetchReleaseDate(String groupId, String artifactId, String version) {
         URI artifactUri = URI.create(String.format(
                 "%s/solrsearch/select?q=g:%s+AND+a:%s+AND+v:%s&wt=json", SEARCH_URI, groupId, artifactId, version));
 
@@ -700,23 +703,19 @@ public class LibYearMojo extends AbstractMojo {
 
         try {
             try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-                if (response.getStatusLine().getStatusCode() != 200) {
+                if (response.getCode() != 200) {
                     getLog().error(String.format(
                             "Failed to fetch release date for %s:%s %s (%s)",
-                            groupId,
-                            artifactId,
-                            version,
-                            response.getStatusLine().getReasonPhrase()));
+                            groupId, artifactId, version, response.getReasonPhrase()));
                     return Optional.empty();
                 }
 
                 String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
                 return Optional.of(responseBody);
             }
-        } catch (ConnectTimeoutException | SocketTimeoutException e) {
+        } catch (Exception e) {
             getLog().error(String.format(
-                    "Failed to fetch release date for %s:%s %s (%s)",
-                    groupId, artifactId, version, "request timed out"));
+                    "Failed to fetch release date for %s:%s %s (%s)", groupId, artifactId, version, e.getMessage()));
             return Optional.empty();
         }
     }
