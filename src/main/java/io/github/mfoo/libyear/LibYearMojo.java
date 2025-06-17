@@ -52,6 +52,7 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.util.TimeValue;
 import org.apache.hc.core5.util.Timeout;
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
@@ -61,7 +62,6 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
-import org.apache.maven.repository.RepositorySystem;
 import org.apache.maven.settings.Settings;
 import org.codehaus.mojo.versions.api.ArtifactVersions;
 import org.codehaus.mojo.versions.api.DefaultVersionsHelper;
@@ -69,6 +69,7 @@ import org.codehaus.mojo.versions.api.VersionsHelper;
 import org.codehaus.mojo.versions.filtering.WildcardMatcher;
 import org.codehaus.mojo.versions.utils.DependencyComparator;
 import org.codehaus.plexus.util.StringUtils;
+import org.eclipse.aether.RepositorySystem;
 import org.json.JSONObject;
 
 /** Analyze dependencies and calculate how old they are. */
@@ -115,7 +116,8 @@ public class LibYearMojo extends AbstractMojo {
     private static String SEARCH_URI = "https://search.maven.org";
 
     private final RepositorySystem repositorySystem;
-    private final org.eclipse.aether.RepositorySystem aetherRepositorySystem;
+    private final ArtifactHandlerManager artifactHandlerManager;
+
     private VersionsHelper helper;
 
     /**
@@ -313,9 +315,9 @@ public class LibYearMojo extends AbstractMojo {
     private List<String> dependencyManagementExcludes;
 
     @Inject
-    public LibYearMojo(RepositorySystem repositorySystem, org.eclipse.aether.RepositorySystem aetherRepositorySystem) {
+    public LibYearMojo(RepositorySystem repositorySystem, ArtifactHandlerManager artifactHandlerManager) {
         this.repositorySystem = repositorySystem;
-        this.aetherRepositorySystem = aetherRepositorySystem;
+        this.artifactHandlerManager = artifactHandlerManager;
 
         httpClient = setupHTTPClient();
     }
@@ -498,7 +500,7 @@ public class LibYearMojo extends AbstractMojo {
         if (helper == null) {
             helper = new DefaultVersionsHelper.Builder()
                     .withRepositorySystem(repositorySystem)
-                    .withAetherRepositorySystem(aetherRepositorySystem)
+                    .withArtifactHandlerManager(artifactHandlerManager)
                     .withIgnoredVersions(ignoredVersions)
                     .withLog(getLog())
                     .withMavenSession(session)
@@ -510,7 +512,7 @@ public class LibYearMojo extends AbstractMojo {
     /**
      * Iterates over the list of updates for the current pom section, logging how far behind the latest version they are.
      *
-     * @param updates   All of the available updates for this section
+     * @param updates   All available updates for this section
      * @param section   The name of the section (e.g. "Plugin Management")
      */
     private float processDependencyUpdates(Map<Dependency, ArtifactVersions> updates, String section) {

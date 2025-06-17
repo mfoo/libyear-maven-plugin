@@ -29,7 +29,7 @@ import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static org.apache.maven.plugin.testing.ArtifactStubFactory.setVariableValueToObject;
 import static org.codehaus.mojo.versions.utils.MockUtils.mockAetherRepositorySystem;
-import static org.codehaus.mojo.versions.utils.MockUtils.mockRepositorySystem;
+import static org.codehaus.mojo.versions.utils.MockUtils.mockArtifactHandlerManager;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -101,11 +101,13 @@ public class LibYearMojoTest {
     @Test
     public void dependencyIsAlreadyOnTheLatestVersion() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -142,11 +144,13 @@ public class LibYearMojoTest {
     @Test
     public void dependencyUpdateAvailable() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -187,11 +191,15 @@ public class LibYearMojoTest {
     @Test
     public void dependencyUpdateWithLongNameAvailable() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency-with-very-very-long-name", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put(
+                                        "default-dependency-with-very-very-long-name",
+                                        new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -236,11 +244,13 @@ public class LibYearMojoTest {
     @Test
     public void singleProjectWithDependencyUpdateAvailableDoesntShowEntireProjectLogLine() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -276,11 +286,13 @@ public class LibYearMojoTest {
     @Test
     public void dependencyUpdateAvailableButDependencyIsExcluded() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -316,11 +328,13 @@ public class LibYearMojoTest {
     @Test
     public void dependencyUpdateAvailableButVersionIsIgnored() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -355,11 +369,13 @@ public class LibYearMojoTest {
     @Test
     public void dependencyUpdateAvailableButProcessingDependenciesIsDisabled() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -423,11 +439,13 @@ public class LibYearMojoTest {
     @Test
     public void dependencyUpdateAvailableWhenVersionSpecifiedInDependencyManagement() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -482,11 +500,13 @@ public class LibYearMojoTest {
             dependencyUpdateAvailableWhenVersionSpecifiedInDependencyManagementButDependencyExcludedFromDependencyManagement()
                     throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -547,11 +567,13 @@ public class LibYearMojoTest {
             dependencyUpdateAvailableWhenVersionSpecifiedInDependencyManagementWhereProcessDependencyManagementIsDisabled()
                     throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -607,11 +629,13 @@ public class LibYearMojoTest {
     @Test
     public void dependencyUpdateAvailableDependencyDefinedInDependencyManagement() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -667,11 +691,13 @@ public class LibYearMojoTest {
         plugin.setDependencies(singletonList(dependencyFor("default-group", "default-dependency", "1.0.0")));
 
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withPlugins(singletonList(plugin))
@@ -717,11 +743,13 @@ public class LibYearMojoTest {
         plugin.setDependencies(singletonList(dependencyFor("default-group", "default-dependency", "1.0.1")));
 
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withPlugins(singletonList(plugin))
@@ -775,11 +803,13 @@ public class LibYearMojoTest {
         plugin.setDependencies(singletonList(dependencyFor("default-group", "default-dependency", "1.1.0")));
 
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withPlugins(singletonList(plugin))
@@ -862,11 +892,13 @@ public class LibYearMojoTest {
     @Test
     public void apiCallToMavenFails() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -904,11 +936,13 @@ public class LibYearMojoTest {
     @Test
     public void apiCallToMavenTimesOut() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -948,11 +982,13 @@ public class LibYearMojoTest {
     @Test
     public void apiCallToMavenRetriesOnFailure() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -1014,11 +1050,13 @@ public class LibYearMojoTest {
     @Test
     public void dependencyUpdateAvailableButFetchingReleaseDateOfNewerVersionFails() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -1063,11 +1101,13 @@ public class LibYearMojoTest {
     @Test
     public void apiCallToMavenReturnsNotFoundStatus() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -1113,11 +1153,13 @@ public class LibYearMojoTest {
     @Test
     public void dependencyUpdateAvailableButAPISearchDoesNotContainLatestVersion() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -1160,12 +1202,14 @@ public class LibYearMojoTest {
     @Test
     public void multipleDependenciesWithUpdatesAreSortedAlphabetically() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "2.0.0"});
-                        put("second-dependency", new String[] {"5.0.0", "6.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "2.0.0"});
+                                put("second-dependency", new String[] {"5.0.0", "6.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(List.of(
@@ -1216,11 +1260,13 @@ public class LibYearMojoTest {
     @Test
     public void projectExceedsMaxLibYearsAndShouldFailTheBuild() throws Exception {
         LibYearMojo mojo =
-                new LibYearMojo(mockRepositorySystem(), mockAetherRepositorySystem(new HashMap<>() {
-                    {
-                        put("default-dependency", new String[] {"1.0.0", "2.0.0"});
-                    }
-                })) {
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("default-dependency", new String[] {"1.0.0", "2.0.0"});
+                            }
+                        }),
+                        mockArtifactHandlerManager()) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
