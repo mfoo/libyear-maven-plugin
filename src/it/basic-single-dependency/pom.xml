@@ -1,25 +1,22 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<groupId>localhost</groupId>
-	<artifactId>basic-single-dependency</artifactId>
-	<version>1.0</version>
-	<packaging>pom</packaging>
-	<name>libyear-report</name>
-	<url>http://localhost/</url>
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>localhost</groupId>
+  <artifactId>basic-single-dependency</artifactId>
+  <version>1.0</version>
+  <packaging>pom</packaging>
+  <name>libyear-report</name>
 
-	<description>
-		Very basic test to see that dependency updates are
-		suggested correctly
-	</description>
+  <description>Very basic test to see that dependency updates are
+		suggested correctly</description>
+  <url>http://localhost/</url>
 
-	<dependencies>
-		<dependency>
-			<groupId>localhost</groupId>
-			<artifactId>dummy-api</artifactId>
-			<version>1.1</version>
-		</dependency>
-	</dependencies>
+  <dependencies>
+    <dependency>
+      <groupId>localhost</groupId>
+      <artifactId>dummy-api</artifactId>
+      <version>1.1</version>
+    </dependency>
+  </dependencies>
 
 </project>
