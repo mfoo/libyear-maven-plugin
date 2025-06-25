@@ -17,6 +17,8 @@ jobs:
       with:
         java-version: ${{ matrix.java }}
         distribution: adopt
+    - name: Formatting check
+      run: mvn -B spotless:check
     - name: Test with Maven
       run: mvn -B --file pom.xml test
     - name: Verify with Maven
