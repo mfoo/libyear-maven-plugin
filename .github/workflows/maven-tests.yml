@@ -1,5 +1,5 @@
 name: Java Tests
-on: [push]
+on: [push, pull_request]
 jobs:
   test:
     runs-on: ${{ matrix.os }}
