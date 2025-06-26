@@ -23,18 +23,19 @@ import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractDependen
 import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractPluginDependenciesFromPluginsInPluginManagement;
 
 import com.google.common.collect.Maps;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -54,6 +55,7 @@ import org.apache.hc.core5.util.Timeout;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
+import org.apache.maven.artifact.versioning.OverConstrainedVersionException;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.AbstractMojo;
@@ -151,6 +153,19 @@ public class LibYearMojo extends AbstractMojo {
      */
     @Parameter(property = "maxLibYears", defaultValue = "0.0")
     private float maxLibYears;
+
+    /**
+     * Path to the report file, if empty no report file will be generated.
+     */
+    @Parameter(property = "reportFile")
+    private String reportFile;
+
+    /**
+     * Whether the dependency should be included in the report. If it is set to "0", all dependencies will be included,
+     * otherwise only dependencies older than the specified number of years will be included.
+     */
+    @Parameter(property = "minLibYearsForReport", defaultValue = "0.0")
+    private float minLibYearsForReport;
 
     /**
      * Only take these artifacts into consideration.
@@ -413,6 +428,8 @@ public class LibYearMojo extends AbstractMojo {
                         "Dependency Management",
                         getLog());
 
+                generateReport(dependencyManagement, "Dependency Management");
+
                 // Log anything that's left
                 thisProjectLibYearsOutdated += processDependencyUpdates(
                         getHelper().lookupDependenciesUpdates(dependencyManagement.stream(), false, false),
@@ -436,6 +453,8 @@ public class LibYearMojo extends AbstractMojo {
                         "Dependencies",
                         getLog());
 
+                generateReport(dependencies, "Dependency");
+
                 // Log anything that's left
                 thisProjectLibYearsOutdated += processDependencyUpdates(
                         getHelper().lookupDependenciesUpdates(dependencies.stream(), false, false), "Dependencies");
@@ -453,6 +472,8 @@ public class LibYearMojo extends AbstractMojo {
                         pluginManagementDependencyExcludes,
                         "Plugin Management Dependencies",
                         getLog());
+
+                generateReport(filteredPluginDependenciesFromDepManagement, "Plugin Management Dependency");
 
                 // Log anything that's left
                 thisProjectLibYearsOutdated += processDependencyUpdates(
@@ -474,6 +495,8 @@ public class LibYearMojo extends AbstractMojo {
                         "Plugin Dependencies",
                         getLog());
 
+                generateReport(filteredPluginDependencies, "Plugin Dependency");
+
                 // Log anything that's left
                 thisProjectLibYearsOutdated += processDependencyUpdates(
                         getHelper().lookupDependenciesUpdates(filteredPluginDependencies.stream(), false, false),
@@ -493,6 +516,61 @@ public class LibYearMojo extends AbstractMojo {
             projectAges.put(project.getName(), thisProjectLibYearsOutdated);
         } catch (Exception e) {
             throw new MojoExecutionException(e.getMessage(), e);
+        }
+    }
+
+    private void generateReport(Set<Dependency> dependencies, final String categorie) {
+        if (StringUtils.isBlank(reportFile)) {
+            return;
+        }
+
+        StringBuilder logsToReport = new StringBuilder();
+
+        dependencies.stream().forEach(dependency -> {
+            try {
+                Artifact artifact = getHelper().createDependencyArtifact(dependency);
+
+                Optional<LocalDate> currentReleaseDate = getReleaseDate(
+                        artifact.getGroupId(),
+                        artifact.getArtifactId(),
+                        artifact.getSelectedVersion().toString());
+
+                String depName = dependency.getGroupId() + ":" + dependency.getArtifactId();
+                String libYearsStr = "unknown";
+                if (!currentReleaseDate.isEmpty()) {
+                    long libWeeksOutdated = ChronoUnit.WEEKS.between(currentReleaseDate.get(), LocalDate.now());
+                    float libYearsOutdated = libWeeksOutdated / 52f;
+
+                    if (libYearsOutdated > 0
+                            && (minLibYearsForReport <= 0 || libYearsOutdated > minLibYearsForReport)) {
+                        libYearsStr = String.format(Locale.US, "%.2f", libYearsOutdated);
+                    }
+                }
+                logsToReport
+                        .append(depName)
+                        .append(",")
+                        .append(dependency.getVersion())
+                        .append(",")
+                        .append(dependency.getType())
+                        .append(",")
+                        .append(categorie)
+                        .append(",")
+                        .append(libYearsStr)
+                        .append(System.lineSeparator());
+            } catch (MojoExecutionException | OverConstrainedVersionException e) {
+                getLog().error("Exception by writing report", e);
+            }
+        });
+
+        File targetDirectory = new File(project.getModel().getBuild().getDirectory());
+        if (targetDirectory.exists() && targetDirectory.isDirectory()) {
+            Path path = Paths.get(targetDirectory.getAbsolutePath(), reportFile);
+            try {
+                Files.write(
+                        path, logsToReport.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            } catch (IOException e) {
+                getLog().error("Failed to write report file: " + reportFile, e);
+            }
         }
     }
 
@@ -633,7 +711,7 @@ public class LibYearMojo extends AbstractMojo {
      * @param libYearsOutdated  How many libyears behind it is
      */
     private void logDependencyAge(Map.Entry<String, Pair<LocalDate, LocalDate>> dep, float libYearsOutdated) {
-        String right = String.format(" %.2f libyears", libYearsOutdated);
+        String right = String.format(Locale.US, " %.2f libyears", libYearsOutdated);
         String left = "  " + dep.getKey() + " ";
 
         if ((left.length() + right.length()) > INFO_PAD_SIZE) {
