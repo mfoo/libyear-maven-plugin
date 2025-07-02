@@ -4,7 +4,7 @@
 
   <groupId>io.github.mfoo</groupId>
   <artifactId>libyear-maven-plugin</artifactId>
-  <version>1.1.1-SNAPSHOT</version>
+  <version>1.2.0</version>
   <packaging>maven-plugin</packaging>
   <name>libyear-maven-plugin Maven Mojo</name>
   <description>This plugin helps you see how outdated your Maven project
@@ -35,7 +35,7 @@
   <scm>
     <connection>scm:git:https://github.com/mfoo/libyear-maven-plugin.git</connection>
     <developerConnection>scm:git:git@github.com:mfoo/libyear-maven-plugin.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>v1.2.0</tag>
     <url>https://github.com/mfoo/libyear-maven-plugin/tree/main</url>
   </scm>
 
