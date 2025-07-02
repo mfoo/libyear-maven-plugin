@@ -347,7 +347,7 @@
         <configuration>
           <releaseProfiles>deploy</releaseProfiles>
           <goals>deploy</goals>
-          <scmCommentPrefix>[maven-release-plugin]</scmCommentPrefix>
+          <scmCommentPrefix>fix:</scmCommentPrefix>
           <preparationGoals>clean verify</preparationGoals>
         </configuration>
       </plugin>
