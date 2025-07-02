@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>localhost</groupId>
+  <artifactId>basic-single-dependency</artifactId>
+  <version>1.0</version>
+  <packaging>pom</packaging>
+  <name>libyear-report</name>
+
+  <description>Testing how the plugin interprets versions in Maven project properties</description>
+  <url>http://localhost/</url>
+
+  <!-- This bug only manifests when the project version is used in <dependencyManagement /> -->
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-text</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-text</artifactId>
+    </dependency>
+  </dependencies>
+
+</project>

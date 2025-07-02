@@ -779,6 +779,10 @@ public class LibYearMojo extends AbstractMojo {
 
     /** Make the API call to fetch the release date */
     private Optional<String> fetchReleaseDate(String groupId, String artifactId, String version) {
+        if (version.equals("${project.version}")) {
+            version = project.getVersion();
+        }
+
         URI artifactUri = URI.create(String.format(
                 "%s/solrsearch/select?q=g:%s+AND+a:%s+AND+v:%s&wt=json", SEARCH_URI, groupId, artifactId, version));
 
