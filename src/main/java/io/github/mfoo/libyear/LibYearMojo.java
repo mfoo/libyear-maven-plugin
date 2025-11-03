@@ -93,24 +93,24 @@ public class LibYearMojo extends AbstractMojo {
      * Cache to store the release dates of dependencies to reduce the number of API calls to {@link
      * #SEARCH_URI}
      */
-    static final Map<String, Map<String, LocalDate>> dependencyVersionReleaseDates = Maps.newHashMap();
+    private static final Map<String, Map<String, LocalDate>> dependencyVersionReleaseDates = Maps.newHashMap();
 
     /**
      * Track the running total of how many libweeks outdated we are. Used in multi-module builds.
      */
-    static final AtomicLong libWeeksOutDated = new AtomicLong();
+    private static final AtomicLong libWeeksOutDated = new AtomicLong();
 
     private final CloseableHttpClient httpClient;
 
     /**
      * Track the age of each module in a multi-module project.
      */
-    static final Map<String, Float> projectAges = new ConcurrentHashMap<>();
+    private static final Map<String, Float> projectAges = new ConcurrentHashMap<>();
 
     /**
      * Track the age of the oldest version in use of each dependency
      */
-    static final Map<String, Float> dependencyAges = new ConcurrentHashMap<>();
+    private static final Map<String, Float> dependencyAges = new ConcurrentHashMap<>();
 
     /**
      * The Maven search URI quite often times out or returns HTTP 5xx. This variable controls how
@@ -425,6 +425,18 @@ public class LibYearMojo extends AbstractMojo {
      */
     protected void setFetchRetryCount(int count) {
         MAVEN_API_HTTP_RETRY_COUNT = count;
+    }
+
+    /**
+     * Reset static state. Package-private for testing purposes. This method clears all static
+     * caches and counters used for tracking dependency ages and API responses across multi-module
+     * builds.
+     */
+    static void resetStaticState() {
+        libWeeksOutDated.set(0);
+        dependencyVersionReleaseDates.clear();
+        projectAges.clear();
+        dependencyAges.clear();
     }
 
     private static boolean dependenciesMatch(Dependency dependency, Dependency managedDependency) {

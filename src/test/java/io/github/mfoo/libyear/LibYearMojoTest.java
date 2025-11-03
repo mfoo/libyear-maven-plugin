@@ -94,9 +94,7 @@ public class LibYearMojoTest {
 
     @AfterEach
     public void reset() {
-        // TODO: Make these private and add a reset method in the mojo
-        LibYearMojo.libWeeksOutDated.set(0);
-        LibYearMojo.dependencyVersionReleaseDates.clear();
+        LibYearMojo.resetStaticState();
     }
 
     /**
