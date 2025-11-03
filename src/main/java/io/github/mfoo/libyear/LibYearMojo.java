@@ -142,6 +142,9 @@ public class LibYearMojo extends AbstractMojo {
     @Parameter(defaultValue = "${settings}", readonly = true)
     private Settings settings;
 
+    /**
+     * Set of versions to ignore when checking for updates.
+     */
     @Parameter(property = "maven.version.ignore", readonly = true)
     protected Set<String> ignoredVersions;
 
@@ -341,6 +344,12 @@ public class LibYearMojo extends AbstractMojo {
     @Parameter(property = "dependencyManagementExcludes")
     private List<String> dependencyManagementExcludes;
 
+    /**
+     * Constructor for LibYearMojo.
+     *
+     * @param repositorySystem the Maven repository system
+     * @param artifactFactory the artifact factory
+     */
     @Inject
     public LibYearMojo(RepositorySystem repositorySystem, ArtifactFactory artifactFactory) {
         this.repositorySystem = repositorySystem;
@@ -392,12 +401,20 @@ public class LibYearMojo extends AbstractMojo {
         this.session = session;
     }
 
-    /** Set the search URI */
+    /**
+     * Set the search URI
+     *
+     * @param uri the URI to use for searching
+     */
     protected void setSearchUri(String uri) {
         SEARCH_URI = uri;
     }
 
-    /** Setter for the HTTP timeout for API calls */
+    /**
+     * Setter for the HTTP timeout for API calls
+     *
+     * @param seconds the timeout in seconds
+     */
     protected void setHttpTimeout(int seconds) {
         MAVEN_API_HTTP_TIMEOUT_SECONDS = seconds;
     }
