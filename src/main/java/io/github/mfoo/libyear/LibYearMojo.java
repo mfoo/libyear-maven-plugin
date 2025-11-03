@@ -58,12 +58,11 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.util.TimeValue;
 import org.apache.hc.core5.util.Timeout;
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
-import org.apache.maven.artifact.versioning.OverConstrainedVersionException;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugin.MojoExecution;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -72,9 +71,14 @@ import org.apache.maven.project.MavenProject;
 import org.apache.maven.settings.Settings;
 import org.codehaus.mojo.versions.api.ArtifactVersions;
 import org.codehaus.mojo.versions.api.DefaultVersionsHelper;
+import org.codehaus.mojo.versions.api.PomHelper;
 import org.codehaus.mojo.versions.api.VersionsHelper;
 import org.codehaus.mojo.versions.filtering.WildcardMatcher;
+import org.codehaus.mojo.versions.rule.RuleService;
+import org.codehaus.mojo.versions.rule.RulesServiceBuilder;
+import org.codehaus.mojo.versions.utils.ArtifactFactory;
 import org.codehaus.mojo.versions.utils.DependencyComparator;
+import org.codehaus.mojo.versions.utils.VersionsExpressionEvaluator;
 import org.codehaus.plexus.util.StringUtils;
 import org.eclipse.aether.RepositorySystem;
 import org.json.JSONObject;
@@ -123,7 +127,7 @@ public class LibYearMojo extends AbstractMojo {
     private static String SEARCH_URI = "https://search.maven.org";
 
     private final RepositorySystem repositorySystem;
-    private final ArtifactHandlerManager artifactHandlerManager;
+    private final ArtifactFactory artifactFactory;
 
     private VersionsHelper helper;
 
@@ -143,6 +147,9 @@ public class LibYearMojo extends AbstractMojo {
 
     @Parameter(defaultValue = "${session}", required = true, readonly = true)
     private MavenSession session;
+
+    @Parameter(defaultValue = "${mojoExecution}", required = true, readonly = true)
+    private MojoExecution mojoExecution;
 
     /**
      * Whether to fail the build if the total number of libyears for the project exceeds this
@@ -335,9 +342,9 @@ public class LibYearMojo extends AbstractMojo {
     private List<String> dependencyManagementExcludes;
 
     @Inject
-    public LibYearMojo(RepositorySystem repositorySystem, ArtifactHandlerManager artifactHandlerManager) {
+    public LibYearMojo(RepositorySystem repositorySystem, ArtifactFactory artifactFactory) {
         this.repositorySystem = repositorySystem;
-        this.artifactHandlerManager = artifactHandlerManager;
+        this.artifactFactory = artifactFactory;
 
         httpClient = setupHTTPClient();
     }
@@ -533,12 +540,10 @@ public class LibYearMojo extends AbstractMojo {
 
         dependencies.stream().forEach(dependency -> {
             try {
-                Artifact artifact = getHelper().createDependencyArtifact(dependency);
+                Artifact artifact = artifactFactory.createArtifact(dependency);
 
-                Optional<LocalDate> currentReleaseDate = getReleaseDate(
-                        artifact.getGroupId(),
-                        artifact.getArtifactId(),
-                        artifact.getSelectedVersion().toString());
+                Optional<LocalDate> currentReleaseDate =
+                        getReleaseDate(artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersion());
 
                 String depName = dependency.getGroupId() + ":" + dependency.getArtifactId();
                 String libYearsStr = "unknown";
@@ -562,7 +567,7 @@ public class LibYearMojo extends AbstractMojo {
                         .append(",")
                         .append(libYearsStr)
                         .append(System.lineSeparator());
-            } catch (MojoExecutionException | OverConstrainedVersionException e) {
+            } catch (Exception e) {
                 getLog().error("Exception by writing report", e);
             }
         });
@@ -581,12 +586,20 @@ public class LibYearMojo extends AbstractMojo {
 
     private VersionsHelper getHelper() throws MojoExecutionException {
         if (helper == null) {
-            helper = new DefaultVersionsHelper.Builder()
-                    .withRepositorySystem(repositorySystem)
-                    .withArtifactHandlerManager(artifactHandlerManager)
+            RuleService ruleService = new RulesServiceBuilder()
+                    .withMavenSession(session)
                     .withIgnoredVersions(ignoredVersions)
                     .withLog(getLog())
+                    .build();
+            PomHelper pomHelper =
+                    new PomHelper(artifactFactory, new VersionsExpressionEvaluator(session, mojoExecution));
+            helper = new DefaultVersionsHelper.Builder()
+                    .withRepositorySystem(repositorySystem)
+                    .withArtifactFactory(artifactFactory)
+                    .withLog(getLog())
                     .withMavenSession(session)
+                    .withPomHelper(pomHelper)
+                    .withRuleService(ruleService)
                     .build();
         }
         return helper;

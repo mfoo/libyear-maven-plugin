@@ -52,6 +52,7 @@ import org.apache.maven.model.Plugin;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.mojo.versions.filtering.WildcardMatcher;
+import org.codehaus.mojo.versions.utils.ArtifactFactory;
 import org.codehaus.mojo.versions.utils.DependencyBuilder;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -111,7 +112,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -154,7 +155,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -203,7 +204,7 @@ public class LibYearMojoTest {
                                         new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -254,7 +255,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -296,7 +297,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -338,7 +339,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -379,7 +380,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -449,7 +450,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -510,7 +511,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -577,7 +578,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -639,7 +640,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -701,7 +702,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withPlugins(singletonList(plugin))
@@ -753,7 +754,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withPlugins(singletonList(plugin))
@@ -813,7 +814,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withPlugins(singletonList(plugin))
@@ -902,7 +903,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -946,7 +947,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -992,7 +993,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -1060,7 +1061,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -1111,7 +1112,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -1163,7 +1164,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "1.1.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -1213,7 +1214,7 @@ public class LibYearMojoTest {
                                 put("second-dependency", new String[] {"5.0.0", "6.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(List.of(
@@ -1270,7 +1271,7 @@ public class LibYearMojoTest {
                                 put("default-dependency", new String[] {"1.0.0", "2.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         MavenProject project = new MavenProjectBuilder()
                                 .withDependencies(singletonList(DependencyBuilder.newBuilder()
@@ -1319,7 +1320,7 @@ public class LibYearMojoTest {
                                 put("default2-dependency", new String[] {"3.0.0", "4.0.0"});
                             }
                         }),
-                        mockArtifactHandlerManager()) {
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
                     {
                         Dependency dep1 = DependencyBuilder.newBuilder()
                                 .withGroupId("default-group")
