@@ -84,7 +84,6 @@ import org.eclipse.aether.RepositorySystem;
 import org.json.JSONObject;
 
 /** Analyze dependencies and calculate how old they are. */
-@SuppressWarnings("unused")
 @Mojo(name = "analyze", defaultPhase = LifecyclePhase.VERIFY)
 public class LibYearMojo extends AbstractMojo {
     /** Screen width for formatting the output number of libyears */
