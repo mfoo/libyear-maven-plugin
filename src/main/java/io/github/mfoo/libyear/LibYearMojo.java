@@ -23,6 +23,7 @@ import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractDependen
 import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractPluginDependenciesFromPluginsInPluginManagement;
 
 import com.google.common.collect.Maps;
+import io.github.mfoo.libyear.utils.MavenArtifactInfo;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -795,23 +796,28 @@ public class LibYearMojo extends AbstractMojo {
 
             JSONObject json = new JSONObject(response.get());
             JSONObject queryResponse = json.getJSONObject("response");
+            long epochTime = 0L;
             if (queryResponse.getLong("numFound") != 0) {
-                long epochTime =
-                        queryResponse.getJSONArray("docs").getJSONObject(0).getLong("timestamp");
-
+                epochTime = queryResponse.getJSONArray("docs").getJSONObject(0).getLong("timestamp");
                 getLog().debug(String.format("Found release time %d for %s:%s", epochTime, ga, version));
 
-                LocalDate releaseDate = Instant.ofEpochMilli(epochTime)
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate();
-
-                versionReleaseDates.put(version, releaseDate);
-                dependencyVersionReleaseDates.put(ga, versionReleaseDates);
-                return Optional.of(releaseDate);
             } else {
                 getLog().debug(String.format("Could not find artifact for %s %s", ga, version));
-                return Optional.empty();
+                try {
+                    // Fallback: Use Maven Central Last-Modified header
+                    epochTime = MavenArtifactInfo.getLastModifiedTimestamp(groupId, artifactId, version);
+                } catch (IOException e) {
+                    getLog().debug(String.format(
+                            "Could not fetch Last-Modified header for %s %s: %s", ga, version, e.getMessage()));
+                    return Optional.empty();
+                }
             }
+            LocalDate releaseDate = Instant.ofEpochMilli(epochTime)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+            versionReleaseDates.put(version, releaseDate);
+            dependencyVersionReleaseDates.put(ga, versionReleaseDates);
+            return Optional.of(releaseDate);
         } catch (Exception e) {
             getLog().error(String.format("Failed to fetch release date for %s %s: %s", ga, version, e.getMessage()));
             return Optional.empty();
