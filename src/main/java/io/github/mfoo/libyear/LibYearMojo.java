@@ -23,6 +23,7 @@ import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractDependen
 import static org.codehaus.mojo.versions.utils.MavenProjectUtils.extractPluginDependenciesFromPluginsInPluginManagement;
 
 import com.google.common.collect.Maps;
+import io.github.mfoo.libyear.utils.MavenArtifactInfo;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -91,7 +92,7 @@ public class LibYearMojo extends AbstractMojo {
 
     /**
      * Cache to store the release dates of dependencies to reduce the number of API calls to {@link
-     * #SEARCH_URI}
+     * #searchUri}
      */
     private static final Map<String, Map<String, LocalDate>> dependencyVersionReleaseDates = Maps.newHashMap();
 
@@ -118,12 +119,12 @@ public class LibYearMojo extends AbstractMojo {
      */
     private static int MAVEN_API_HTTP_RETRY_COUNT = 5;
 
-    /** HTTP timeout for making calls to {@link #SEARCH_URI} */
+    /** HTTP timeout for making calls to {@link #searchUri} */
     private static int MAVEN_API_HTTP_TIMEOUT_SECONDS = 5;
 
     /** API endpoint to query dependency release dates for age calculations. */
-    // TODO: Consider users requiring HTTP proxies
-    private static String SEARCH_URI = "https://search.maven.org";
+    @Parameter(property = "searchUri", defaultValue = "https://search.maven.org")
+    private String searchUri;
 
     private final RepositorySystem repositorySystem;
     private final ArtifactFactory artifactFactory;
@@ -401,12 +402,12 @@ public class LibYearMojo extends AbstractMojo {
     }
 
     /**
-     * Set the search URI
+     * Setter for property 'searchUri'.
      *
-     * @param uri the URI to use for searching
+     * @param searchUri Value to set for property 'searchUri'.
      */
-    protected void setSearchUri(String uri) {
-        SEARCH_URI = uri;
+    protected void setSearchUri(String searchUri) {
+        this.searchUri = searchUri;
     }
 
     /**
@@ -771,7 +772,7 @@ public class LibYearMojo extends AbstractMojo {
     }
 
     /**
-     * Make an API call to {@link #SEARCH_URI} to fetch the release date of the specified artifact.
+     * Make an API call to {@link #searchUri} to fetch the release date of the specified artifact.
      * Uses the cache in {@link #dependencyVersionReleaseDates} if possible.
      *
      * @param groupId The required artifact's groupId
@@ -795,23 +796,28 @@ public class LibYearMojo extends AbstractMojo {
 
             JSONObject json = new JSONObject(response.get());
             JSONObject queryResponse = json.getJSONObject("response");
+            long epochTime = 0L;
             if (queryResponse.getLong("numFound") != 0) {
-                long epochTime =
-                        queryResponse.getJSONArray("docs").getJSONObject(0).getLong("timestamp");
-
+                epochTime = queryResponse.getJSONArray("docs").getJSONObject(0).getLong("timestamp");
                 getLog().debug(String.format("Found release time %d for %s:%s", epochTime, ga, version));
 
-                LocalDate releaseDate = Instant.ofEpochMilli(epochTime)
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate();
-
-                versionReleaseDates.put(version, releaseDate);
-                dependencyVersionReleaseDates.put(ga, versionReleaseDates);
-                return Optional.of(releaseDate);
             } else {
                 getLog().debug(String.format("Could not find artifact for %s %s", ga, version));
-                return Optional.empty();
+                try {
+                    // Fallback: Use Maven Central Last-Modified header
+                    epochTime = MavenArtifactInfo.getLastModifiedTimestamp(groupId, artifactId, version);
+                } catch (IOException e) {
+                    getLog().debug(String.format(
+                            "Could not fetch Last-Modified header for %s %s: %s", ga, version, e.getMessage()));
+                    return Optional.empty();
+                }
             }
+            LocalDate releaseDate = Instant.ofEpochMilli(epochTime)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+            versionReleaseDates.put(version, releaseDate);
+            dependencyVersionReleaseDates.put(ga, versionReleaseDates);
+            return Optional.of(releaseDate);
         } catch (Exception e) {
             getLog().error(String.format("Failed to fetch release date for %s %s: %s", ga, version, e.getMessage()));
             return Optional.empty();
@@ -825,7 +831,7 @@ public class LibYearMojo extends AbstractMojo {
         }
 
         URI artifactUri = URI.create(String.format(
-                "%s/solrsearch/select?q=g:%s+AND+a:%s+AND+v:%s&wt=json", SEARCH_URI, groupId, artifactId, version));
+                "%s/solrsearch/select?q=g:%s+AND+a:%s+AND+v:%s&wt=json", searchUri, groupId, artifactId, version));
 
         getLog().debug("Fetching " + artifactUri);
 

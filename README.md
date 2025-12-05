@@ -72,7 +72,6 @@ configuration in `pom.xml`.
 | `maxLibYears`          | Cause the build to fail if dependencies are older than this   | `4`                             |
 | `reportFile`           | Write a CSV report file with this name into the target folder | `libyear-report.csv`            |
 | `minLibYearsForReport` | Minimum age of the dependencies to be included in the report  | `2`                             |
+| `searchUri`            | Based search URI used to query maven central                  | `https://search.maven.org`      |
 
-
-A full list of options can be seen as part of the [plugin documentation
-site](https://mfoo.github.io/libyear-maven-plugin/analyze-mojo.html).
+A full list of options can be seen as part of the [plugin documentation site](https://mfoo.github.io/libyear-maven-plugin/analyze-mojo.html).

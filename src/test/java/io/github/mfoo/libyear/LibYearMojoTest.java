@@ -71,7 +71,7 @@ import org.mockito.quality.Strictness;
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-@WireMockTest(httpPort = 8080)
+@WireMockTest(httpPort = 8090)
 public class LibYearMojoTest {
     // TODO: Tests with version numbers being referenced by variables
     // TODO: Test with version ranges
@@ -125,7 +125,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -168,7 +168,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -216,7 +216,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -268,7 +268,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -313,7 +313,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -354,7 +354,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -394,7 +394,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -469,7 +469,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -535,7 +535,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -599,7 +599,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -658,7 +658,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -712,7 +712,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -769,7 +769,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -826,7 +826,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -916,7 +916,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -960,7 +960,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
                         setHttpTimeout(1);
                         setFetchRetryCount(0);
 
@@ -1006,7 +1006,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setFetchRetryCount(2);
 
@@ -1076,7 +1076,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -1125,7 +1125,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -1177,7 +1177,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -1233,7 +1233,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -1287,7 +1287,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
@@ -1348,7 +1348,7 @@ public class LibYearMojoTest {
                         setPluginContext(new HashMap<>());
 
                         setSession(mockMavenSession(project));
-                        setSearchUri("http://localhost:8080");
+                        setSearchUri("http://localhost:8090");
 
                         setLog(new InMemoryTestLogger());
                     }
