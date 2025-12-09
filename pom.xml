@@ -4,7 +4,7 @@
 
   <groupId>io.github.mfoo</groupId>
   <artifactId>libyear-maven-plugin</artifactId>
-  <version>1.3.0</version>
+  <version>1.3.1-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
   <name>libyear-maven-plugin Maven Mojo</name>
   <description>This plugin helps you see how outdated your Maven project
@@ -35,7 +35,7 @@
   <scm>
     <connection>scm:git:https://github.com/mfoo/libyear-maven-plugin.git</connection>
     <developerConnection>scm:git:git@github.com:mfoo/libyear-maven-plugin.git</developerConnection>
-    <tag>libyear-maven-plugin-1.3.0</tag>
+    <tag>HEAD</tag>
     <url>https://github.com/mfoo/libyear-maven-plugin/tree/main</url>
   </scm>
 
@@ -257,7 +257,7 @@
             <palantirJavaFormat>
               <version>2.81.0</version>
             </palantirJavaFormat>
-            <removeUnusedImports/>
+            <removeUnusedImports />
           </java>
           <pom>
             <includes>
@@ -307,7 +307,7 @@
             </goals>
             <configuration>
               <rules>
-                <banDuplicatePomDependencyVersions/>
+                <banDuplicatePomDependencyVersions />
               </rules>
             </configuration>
           </execution>
