@@ -8,9 +8,15 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 14
+    commit-message:
+      prefix: "chore"
+      include: "scope"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     cooldown:
       default-days: 14
+    commit-message:
+      prefix: "chore"
+      include: "scope"
