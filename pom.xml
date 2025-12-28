@@ -91,12 +91,12 @@
     <dependency>
       <groupId>org.apache.httpcomponents.client5</groupId>
       <artifactId>httpclient5</artifactId>
-      <version>5.5.1</version>
+      <version>5.5.2</version>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents.core5</groupId>
       <artifactId>httpcore5</artifactId>
-      <version>5.3.6</version>
+      <version>5.4</version>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>
@@ -182,7 +182,6 @@
       <version>4.0.2</version>
     </dependency>
     <dependency>
-      <!-- Necessary at test runtime due to Mockito exceptions, see https://github.com/codehaus-plexus/plexus-utils/releases/tag/plexus-utils-4.0.0 -->
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-xml</artifactId>
       <version>4.1.0</version>
