@@ -48,10 +48,10 @@ import java.util.stream.Collectors;
 import javax.inject.Inject;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.apache.hc.core5.http.HttpResponseInterceptor;
@@ -360,14 +360,18 @@ public class LibYearMojo extends AbstractMojo {
 
     private CloseableHttpClient setupHTTPClient() {
         RequestConfig config = RequestConfig.custom()
-                .setConnectTimeout(Timeout.ofSeconds(MAVEN_API_HTTP_TIMEOUT_SECONDS))
                 .setConnectionRequestTimeout(Timeout.ofSeconds(MAVEN_API_HTTP_TIMEOUT_SECONDS))
                 .setResponseTimeout(Timeout.ofSeconds(MAVEN_API_HTTP_TIMEOUT_SECONDS))
+                .build();
+
+        ConnectionConfig connectionConfig = ConnectionConfig.custom()
+                .setConnectTimeout(Timeout.ofSeconds(MAVEN_API_HTTP_TIMEOUT_SECONDS))
                 .build();
 
         PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
         connectionManager.setMaxTotal(20);
         connectionManager.setDefaultMaxPerRoute(20);
+        connectionManager.setDefaultConnectionConfig(connectionConfig);
 
         return HttpClientBuilder.create()
                 .setConnectionManager(connectionManager)
@@ -825,33 +829,33 @@ public class LibYearMojo extends AbstractMojo {
     }
 
     /** Make the API call to fetch the release date */
-    private Optional<String> fetchReleaseDate(String groupId, String artifactId, String version) {
-        if (version.equals("${project.version}")) {
-            version = project.getVersion();
-        }
+    private Optional<String> fetchReleaseDate(String groupId, String artifactId, final String version) {
+        final String versionToFetch = version.equals("${project.version}") ? project.getVersion() : version;
 
         URI artifactUri = URI.create(String.format(
-                "%s/solrsearch/select?q=g:%s+AND+a:%s+AND+v:%s&wt=json", searchUri, groupId, artifactId, version));
+                "%s/solrsearch/select?q=g:%s+AND+a:%s+AND+v:%s&wt=json",
+                searchUri, groupId, artifactId, versionToFetch));
 
         getLog().debug("Fetching " + artifactUri);
 
         final HttpGet httpGet = new HttpGet(artifactUri);
 
         try {
-            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+            return httpClient.execute(httpGet, response -> {
                 if (response.getCode() != 200) {
                     getLog().error(String.format(
                             "Failed to fetch release date for %s:%s %s (%s)",
-                            groupId, artifactId, version, response.getReasonPhrase()));
+                            groupId, artifactId, versionToFetch, response.getReasonPhrase()));
                     return Optional.empty();
                 }
 
                 String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
                 return Optional.of(responseBody);
-            }
+            });
         } catch (Exception e) {
             getLog().error(String.format(
-                    "Failed to fetch release date for %s:%s %s (%s)", groupId, artifactId, version, e.getMessage()));
+                    "Failed to fetch release date for %s:%s %s (%s)",
+                    groupId, artifactId, versionToFetch, e.getMessage()));
             return Optional.empty();
         }
     }

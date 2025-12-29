@@ -2,7 +2,7 @@ package io.github.mfoo.libyear.utils;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -49,7 +49,8 @@ public final class MavenArtifactInfo {
     public static long getLastModifiedTimestamp(String groupId, String artifactId, String version) throws IOException {
         final String path = groupId.replace('.', '/') + "/" + artifactId + "/" + version + "/" + artifactId + "-"
                 + version + ".pom";
-        final HttpURLConnection connection = (HttpURLConnection) new URL(MAVEN_CENTRAL + path).openConnection();
+        final HttpURLConnection connection =
+                (HttpURLConnection) URI.create(MAVEN_CENTRAL + path).toURL().openConnection();
 
         connection.setRequestMethod("HEAD");
         connection.connect();
