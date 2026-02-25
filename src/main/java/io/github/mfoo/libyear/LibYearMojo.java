@@ -564,7 +564,7 @@ public class LibYearMojo extends AbstractMojo {
         }
     }
 
-    private void generateReport(Set<Dependency> dependencies, final String categorie) {
+    private void generateReport(Set<Dependency> dependencies, final String category) {
         if (StringUtils.isBlank(reportFile)) {
             return;
         }
@@ -584,10 +584,10 @@ public class LibYearMojo extends AbstractMojo {
                     if (libYearsOutdated > 0
                             && (minLibYearsForReport <= 0 || libYearsOutdated > minLibYearsForReport)) {
                         String libYearsStr = String.format(Locale.US, "%.2f", libYearsOutdated);
-                        writeToReport(categorie, dependency, logsToReport, libYearsStr);
+                        writeToReport(category, dependency, logsToReport, libYearsStr);
                     }
                 } else {
-                    writeToReport(categorie, dependency, logsToReport, "unknown");
+                    writeToReport(category, dependency, logsToReport, "unknown");
                 }
             } catch (Exception e) {
                 getLog().error("Exception by writing report", e);
@@ -606,7 +606,7 @@ public class LibYearMojo extends AbstractMojo {
         }
     }
 
-    private void writeToReport(String·categorie,·Dependency·dependency,·StringBuilder·logsToReport,·String·libYearsStr)·{
+    private void writeToReport(String category, Dependency dependency, StringBuilder logsToReport, String libYearsStr) {
         logsToReport
             .append(dependency.getGroupId()).append(":").append(dependency.getArtifactId())
             .append(",")
@@ -614,7 +614,7 @@ public class LibYearMojo extends AbstractMojo {
             .append(",")
             .append(dependency.getType())
             .append(",")
-            .append(categorie)
+            .append(category)
             .append(",")
             .append(libYearsStr)
             .append(System.lineSeparator());
