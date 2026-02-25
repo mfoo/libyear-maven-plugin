@@ -606,7 +606,7 @@ public class LibYearMojo extends AbstractMojo {
         }
     }
 
-   private writeToReport(String categorie, Dependency dependency, StringBuilder logsToReport, String libYearsStr) {
+   private void writeToReport(String categorie, Dependency dependency, StringBuilder logsToReport, String libYearsStr) {
         logsToReport
             .append(dependency.getGroupId()).append(":").append(dependency.getArtifactId())
             .append(",")
