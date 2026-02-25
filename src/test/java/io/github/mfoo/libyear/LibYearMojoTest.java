@@ -1378,6 +1378,102 @@ public class LibYearMojoTest {
         assertTrue(content.contains("default-group:default2-dependency") && content.contains("3.00"));
     }
 
+    @Test
+    public void reportFileWithUnknownAndThresholds(@TempDir Path tempDir) throws Exception {
+        Path reportFile = tempDir.resolve("libyear_testreport_complex.csv");
+
+        LibYearMojo mojo =
+                new LibYearMojo(
+                        mockAetherRepositorySystem(new HashMap<>() {
+                            {
+                                put("up-to-date", new String[] {"1.0.0"});
+                                put("below-threshold", new String[] {"1.0.0"});
+                                put("above-threshold", new String[] {"1.0.0"});
+                                put("unknown-release", new String[] {"1.0.0"});
+                            }
+                        }),
+                        new ArtifactFactory(mockArtifactHandlerManager())) {
+                    {
+                        Dependency dep1 = DependencyBuilder.newBuilder()
+                                .withGroupId("default-group")
+                                .withArtifactId("up-to-date")
+                                .withVersion("1.0.0")
+                                .build();
+
+                        Dependency dep2 = DependencyBuilder.newBuilder()
+                                .withGroupId("default-group")
+                                .withArtifactId("below-threshold")
+                                .withVersion("1.0.0")
+                                .build();
+
+                        Dependency dep3 = DependencyBuilder.newBuilder()
+                                .withGroupId("default-group")
+                                .withArtifactId("above-threshold")
+                                .withVersion("1.0.0")
+                                .build();
+
+                        Dependency dep4 = DependencyBuilder.newBuilder()
+                                .withGroupId("default-group")
+                                .withArtifactId("unknown-release")
+                                .withVersion("1.0.0")
+                                .build();
+
+                        MavenProject project = new MavenProjectBuilder()
+                                .withDependencies(Arrays.asList(dep1, dep2, dep3, dep4))
+                                .build();
+                        project.getModel()
+                                .getBuild()
+                                .setDirectory(tempDir.toAbsolutePath().toString());
+
+                        setProject(project);
+                        allowProcessingAllDependencies(this);
+
+                        setVariableValueToObject(this, "reportFile", "libyear_testreport_complex.csv");
+                        setVariableValueToObject(this, "minLibYearsForReport", 1.0f);
+
+                        setSession(mockMavenSession(project));
+                        setSearchUri("http://localhost:8090");
+
+                        setLog(new InMemoryTestLogger());
+                    }
+                };
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // dep1: up-to-date (0 years)
+        stubResponseFor("default-group", "up-to-date", "1.0.0", now);
+
+        // dep2: below-threshold (0.5 years)
+        stubResponseFor("default-group", "below-threshold", "1.0.0", now.minusMonths(6));
+
+        // dep3: above-threshold (2 years)
+        stubResponseFor("default-group", "above-threshold", "1.0.0", now.minusYears(2));
+
+        // dep4: unknown-release (API returns empty or error)
+        stubFor(get(urlPathEqualTo("/solrsearch/select"))
+                .withQueryParam("q", equalTo("g:default-group AND a:unknown-release AND v:1.0.0"))
+                .withQueryParam("wt", equalTo("json"))
+                .willReturn(ok("{\"response\":{\"docs\":[],\"numFound\":0}}")));
+
+        mojo.execute();
+
+        String content = Files.readString(reportFile);
+
+        // dep1 (up-to-date) should NOT be in the report because libYearsOutdated is 0
+        assertFalse(content.contains("default-group:up-to-date"), "Up-to-date dependency should be omitted");
+
+        // dep2 (below-threshold) should NOT be in the report because 0.5 < 1.0
+        assertFalse(content.contains("default-group:below-threshold"), "Dependency below threshold should be omitted");
+
+        // dep3 (above-threshold) SHOULD be in the report
+        assertTrue(content.contains("default-group:above-threshold"), "Dependency above threshold should be included");
+        assertTrue(content.contains("2.00"), "Dependency above threshold should have correct age");
+
+        // dep4 (unknown) SHOULD be in the report as "unknown"
+        assertTrue(content.contains("default-group:unknown-release"), "Unknown release dependency should be included");
+        assertTrue(content.contains("unknown"), "Unknown release dependency should be marked as unknown");
+    }
+
     private void allowProcessingAllDependencies(LibYearMojo mojo) throws IllegalAccessException {
         setVariableValueToObject(mojo, "ignoredVersions", emptySet());
         setVariableValueToObject(mojo, "processDependencies", true);
