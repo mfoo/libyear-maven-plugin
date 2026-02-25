@@ -564,42 +564,31 @@ public class LibYearMojo extends AbstractMojo {
         }
     }
 
-    private void generateReport(Set<Dependency> dependencies, final String categorie) {
+    private void generateReport(Set<Dependency> dependencies, final String category) {
         if (StringUtils.isBlank(reportFile)) {
             return;
         }
 
         StringBuilder logsToReport = new StringBuilder();
-
-        dependencies.stream().forEach(dependency -> {
+        dependencies.forEach(dependency -> {
             try {
                 Artifact artifact = artifactFactory.createArtifact(dependency);
 
                 Optional<LocalDate> currentReleaseDate =
                         getReleaseDate(artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersion());
 
-                String depName = dependency.getGroupId() + ":" + dependency.getArtifactId();
-                String libYearsStr = "unknown";
-                if (!currentReleaseDate.isEmpty()) {
+                if (currentReleaseDate.isPresent()) {
                     long libWeeksOutdated = ChronoUnit.WEEKS.between(currentReleaseDate.get(), LocalDate.now());
                     float libYearsOutdated = libWeeksOutdated / 52f;
 
                     if (libYearsOutdated > 0
                             && (minLibYearsForReport <= 0 || libYearsOutdated > minLibYearsForReport)) {
-                        libYearsStr = String.format(Locale.US, "%.2f", libYearsOutdated);
+                        String libYearsStr = String.format(Locale.US, "%.2f", libYearsOutdated);
+                        writeToReport(category, dependency, logsToReport, libYearsStr);
                     }
+                } else {
+                    writeToReport(category, dependency, logsToReport, "unknown");
                 }
-                logsToReport
-                        .append(depName)
-                        .append(",")
-                        .append(dependency.getVersion())
-                        .append(",")
-                        .append(dependency.getType())
-                        .append(",")
-                        .append(categorie)
-                        .append(",")
-                        .append(libYearsStr)
-                        .append(System.lineSeparator());
             } catch (Exception e) {
                 getLog().error("Exception by writing report", e);
             }
@@ -615,6 +604,20 @@ public class LibYearMojo extends AbstractMojo {
                 getLog().error("Failed to write report file: " + reportFile, e);
             }
         }
+    }
+
+    private void writeToReport(String category, Dependency dependency, StringBuilder logsToReport, String libYearsStr) {
+        logsToReport
+            .append(dependency.getGroupId()).append(":").append(dependency.getArtifactId())
+            .append(",")
+            .append(dependency.getVersion())
+            .append(",")
+            .append(dependency.getType())
+            .append(",")
+            .append(category)
+            .append(",")
+            .append(libYearsStr)
+            .append(System.lineSeparator());
     }
 
     private VersionsHelper getHelper() throws MojoExecutionException {
