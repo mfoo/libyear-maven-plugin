@@ -257,7 +257,7 @@
             <palantirJavaFormat>
               <version>2.81.0</version>
             </palantirJavaFormat>
-            <removeUnusedImports />
+            <removeUnusedImports/>
           </java>
           <pom>
             <includes>
@@ -307,7 +307,7 @@
             </goals>
             <configuration>
               <rules>
-                <banDuplicatePomDependencyVersions />
+                <banDuplicatePomDependencyVersions/>
               </rules>
             </configuration>
           </execution>
