@@ -606,7 +606,7 @@ public class LibYearMojo extends AbstractMojo {
         }
     }
 
-    private writeToReport(String categorie, Dependency dependency, StringBuilder logsToReport, String libYearsStr) {
+   private writeToReport(String categorie, Dependency dependency, StringBuilder logsToReport, String libYearsStr) {
         logsToReport
             .append(dependency.getGroupId()).append(":").append(dependency.getArtifactId())
             .append(",")
@@ -618,9 +618,9 @@ public class LibYearMojo extends AbstractMojo {
             .append(",")
             .append(libYearsStr)
             .append(System.lineSeparator());
-    }
+   }
 
-    private VersionsHelper getHelper() throws MojoExecutionException {
+   private VersionsHelper getHelper() throws MojoExecutionException {
         if (helper == null) {
             RuleService ruleService = new RulesServiceBuilder()
                     .withMavenSession(session)
