@@ -608,16 +608,18 @@ public class LibYearMojo extends AbstractMojo {
 
     private void writeToReport(String category, Dependency dependency, StringBuilder logsToReport, String libYearsStr) {
         logsToReport
-            .append(dependency.getGroupId()).append(":").append(dependency.getArtifactId())
-            .append(",")
-            .append(dependency.getVersion())
-            .append(",")
-            .append(dependency.getType())
-            .append(",")
-            .append(category)
-            .append(",")
-            .append(libYearsStr)
-            .append(System.lineSeparator());
+                .append(dependency.getGroupId())
+                .append(":")
+                .append(dependency.getArtifactId())
+                .append(",")
+                .append(dependency.getVersion())
+                .append(",")
+                .append(dependency.getType())
+                .append(",")
+                .append(category)
+                .append(",")
+                .append(libYearsStr)
+                .append(System.lineSeparator());
     }
 
     private VersionsHelper getHelper() throws MojoExecutionException {
