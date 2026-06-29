@@ -58,7 +58,7 @@
   <properties>
     <codehaus.versions.dependencies.version>2.21.0</codehaus.versions.dependencies.version>
     <github.global.server>github</github.global.server>
-    <junit.jupiter.version>6.1.0</junit.jupiter.version>
+    <junit.jupiter.version>6.1.1</junit.jupiter.version>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
     <maven.dependencies.version>3.9.16</maven.dependencies.version>
