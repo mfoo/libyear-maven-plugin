@@ -18,8 +18,8 @@ jobs:
         java-version: ${{ matrix.java }}
         distribution: temurin
     - name: Formatting check
-      run: mvn -B spotless:check
+      run: ./mvnw -B spotless:check
     - name: Test with Maven
-      run: mvn -B --file pom.xml test
+      run: ./mvnw -B --file pom.xml test
     - name: Verify with Maven
-      run: mvn -B -f pom.xml verify
+      run: ./mvnw -B -f pom.xml verify
