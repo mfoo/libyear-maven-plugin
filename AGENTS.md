@@ -17,33 +17,33 @@ This document provides essential instructions, guidelines, and context for AI co
 ## 2. Requirements & Environment
 
 - **Java:** JDK 17 minimum required. JDK 25 is actively tested and used as the default development version (defined in `.sdkmanrc` as `java=25.0.1-tem`).
-- **Maven:** Apache Maven 3.9+ required.
+- **Maven:** Apache Maven 3.10.0 managed via the included Maven Wrapper (`./mvnw`). Always use `./mvnw` instead of any system-installed Maven.
 - **Node.js / Commitlint:** Commit conventions are validated via `@commitlint/config-conventional` (configured in `commitlint.config.js`).
 
 ---
 
 ## 3. Build & Test Commands
 
-Always verify changes using Maven from the project root:
+Always verify changes using the Maven wrapper (`./mvnw`) from the project root:
 
 | Command | Purpose |
 |---|---|
-| `mvn clean compile` | Clean output directory and compile plugin source code |
-| `mvn test` | Run unit tests (JUnit 5 + Mockito) |
-| `mvn spotless:check` | Verify code and POM formatting against style rules |
-| `mvn spotless:apply` | Automatically reformat Java files and `pom.xml` |
-| `mvn verify` | Complete verification: unit tests, formatting checks, package plugin, and execute integration tests |
+| `./mvnw clean compile` | Clean output directory and compile plugin source code |
+| `./mvnw test` | Run unit tests (JUnit 5 + Mockito) |
+| `./mvnw spotless:check` | Verify code and POM formatting against style rules |
+| `./mvnw spotless:apply` | Automatically reformat Java files and `pom.xml` |
+| `./mvnw verify` | Complete verification: unit tests, formatting checks, package plugin, and execute integration tests |
 
 ### Running a Specific Test
 
 To run an individual unit test class:
 ```bash
-mvn test -Dtest=LibYearMojoTest
+./mvnw test -Dtest=LibYearMojoTest
 ```
 
 To run a specific test method:
 ```bash
-mvn test -Dtest=LibYearMojoTest#testAnalyze
+./mvnw test -Dtest=LibYearMojoTest#testAnalyze
 ```
 
 ---
@@ -53,17 +53,17 @@ mvn test -Dtest=LibYearMojoTest#testAnalyze
 Integration tests verify plugin execution against test Maven projects in simulated environments:
 - **Location:** `src/it/`
 - **Execution Engine:** `maven-invoker-plugin`
-- **When run:** Automatically during `mvn verify` (or `mvn clean verify`)
+- **When run:** Automatically during `./mvnw verify` (or `./mvnw clean verify`)
 - **Structure:** Each directory under `src/it/` contains a test POM (`pom.xml`) and a verification post-build hook script (`verify.bsh` or `verify.groovy`).
 
 To run only the integration tests without all unit tests:
 ```bash
-mvn invoker:run
+./mvnw invoker:run
 ```
 
 To run a specific integration test:
 ```bash
-mvn invoker:run -Dinvoker.test=basic-single-dependency
+./mvnw invoker:run -Dinvoker.test=basic-single-dependency
 ```
 
 ---
@@ -74,8 +74,8 @@ The repository strictly enforces code and POM formatting using `spotless-maven-p
 
 - **Java Code Formatting:** Formatted using [Palantir Java Format](https://github.com/palantir/palantir-java-format) with unused imports automatically removed.
 - **POM Formatting:** `pom.xml` files are formatted using `sortPom` (sorting properties, dependencies, and plugins alphabetically by `groupId,artifactId`).
-- **Formatting Verification:** `mvn spotless:check` is run during CI and will fail the build if any files do not adhere to formatting standards.
-- **Remediation:** Always run `mvn spotless:apply` before committing your changes.
+- **Formatting Verification:** `./mvnw spotless:check` is run during CI and will fail the build if any files do not adhere to formatting standards.
+- **Remediation:** Always run `./mvnw spotless:apply` before committing your changes.
 
 ---
 
@@ -103,11 +103,11 @@ Commit messages must conform to the [Conventional Commits](https://www.conventio
 2. **Implement changes** preserving existing architecture and conventions.
 3. **Format code:**
    ```bash
-   mvn spotless:apply
+   ./mvnw spotless:apply
    ```
 4. **Verify tests and builds:**
    ```bash
-   mvn clean verify
+   ./mvnw clean verify
    ```
 5. **Commit with conventional commit message:**
    ```bash
