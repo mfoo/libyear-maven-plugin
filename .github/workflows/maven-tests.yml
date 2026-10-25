@@ -16,7 +16,7 @@ jobs:
       uses: actions/setup-java@v5
       with:
         java-version: ${{ matrix.java }}
-        distribution: adopt
+        distribution: temurin
     - name: Formatting check
       run: mvn -B spotless:check
     - name: Test with Maven
